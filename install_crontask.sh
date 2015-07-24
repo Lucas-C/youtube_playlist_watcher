@@ -29,6 +29,6 @@ EOF
 echo -e "\nCreating /etc/cron.d/youtube_playlist_watcher_crontask with content:\n(This require sudo permission)\n"
 
 cat <<EOF | sudo tee /etc/cron.d/youtube_playlist_watcher_crontask
-00 00 * * * root (cd $YPW_INSTALL_PATH && ./youtube_playlist_watcher_crontask.sh) >> youtube_playlist_watcher_crontask.log 2>&1
+00 00 * * * root (cd $YPW_INSTALL_PATH && ./youtube_playlist_watcher_crontask.sh >> youtube_playlist_watcher_crontask.log 2>&1)
 EOF
 

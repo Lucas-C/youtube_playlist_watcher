@@ -42,8 +42,10 @@ Then just define a daily cron job and its dedicated Bash script
     cd /path/to/ypw # where you downloaded the script and the JSON dumps will get stored
     ./install_crontask.sh YOUTUBE_API_KEY=... EMAIL_DEST=... PLAYLIST_ID=...
 
-This script will generate the `youtube_playlist_watcher_crontask.sh` script that will be invoked by the cron job.
-If you want to watch multiple playlists, simply repeat its last lines with a different playlist id.
+This script will generate a `youtube_playlist_watcher_crontask.sh` script that will be invoked by the cron job.
+If you want to watch multiple playlists, use another email client command (the default is `mail`),
+keep more or less JSON dumps in history or change the kind of playlist changes watched,
+simply edit this file manually.
 
 
 ## Manual usage
