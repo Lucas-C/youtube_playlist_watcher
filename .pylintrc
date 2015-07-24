@@ -1,0 +1,5 @@
+[MESSAGES CONTROL]
+disable = bad-continuation, invalid-name, missing-docstring, too-few-public-methods
+
+[FORMAT]
+max-line-length = 150
