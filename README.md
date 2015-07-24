@@ -42,7 +42,7 @@ Then just define a daily cron job and its dedicated Bash script
     cd /path/to/ypw # where you downloaded the script and the JSON dumps will get stored
     ./install_crontask.sh YOUTUBE_API_KEY=... EMAIL_DEST=... PLAYLIST_ID=...
 
-This script will generate the `youtube_playlist_backup_crontask.sh` script that will be invoked by the cron job.
+This script will generate the `youtube_playlist_watcher_crontask.sh` script that will be invoked by the cron job.
 If you want to watch multiple playlists, simply repeat its last lines with a different playlist id.
 
 
@@ -51,7 +51,7 @@ If you want to watch multiple playlists, simply repeat its last lines with a dif
 To compare a dump taken at any date with the latest one:
 
     YOUTUBE_API_KEY=...
-    ./youtube_playlist_backup.py --playlist $PLAYLIST_ID compare 2015-01-01 LATEST 
+    ./youtube_playlist_watcher.py --playlist $PLAYLIST_ID compare 2015-01-01 LATEST
 
 Want to find more secret features ? The `--help` flag is your friend.
 
