@@ -34,7 +34,7 @@ and a [Youtube Data API key](https://developers.google.com/youtube/v3/getting-st
 
 Download the Python script, make it executable and install the required Python dependencies:
 
-    pip3.4 install --user -r requirements.txt
+    pip3.4 install --user requests tqdm
 
 Then just define a daily cron job and its dedicated Bash script
 (just substitute the `...` by real values before running those commands) :
@@ -66,5 +66,5 @@ Bug reports or features suggestions are warmly welcome !
 
 For the devs:
 
-    pip3.4 install --user -r dev-requirements.txt
+    pip3.4 install --user pre-commit
     pre-commit install
