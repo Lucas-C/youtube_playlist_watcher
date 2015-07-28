@@ -149,12 +149,14 @@ class OutputLinesIterator:
     @staticmethod
     def region_restriction_change(changeset):
         for _, (new_item, old_restricts, new_restricts) in changeset.items():
-            yield 'REGION RESTRICTIONS CHANGED for ' + get_video_title(new_item) + ' : ' + old_restricts + '-> ' + new_restricts
+            yield ('REGION RESTRICTIONS CHANGED for ' + get_video_title(new_item) + ' : ' + old_restricts + '-> ' + new_restricts
+                 + ' -> find another video named like that: ' + get_title_based_search_url(new_item))
     @staticmethod
     def became_private(changeset):
         for old_item in changeset:
             video_name = get_video_title(old_item) if not is_video_private(old_item) else get_video_url(old_item)
-            yield 'BECAME PRIVATE: ' + video_name
+            yield ('BECAME PRIVATE: ' + video_name
+                 + ' -> find another video named like that: ' + get_title_based_search_url(old_item))
 
 
 ################################################################################
