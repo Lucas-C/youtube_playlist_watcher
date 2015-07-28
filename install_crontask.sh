@@ -21,10 +21,10 @@ export YOUTUBE_API_KEY=$YOUTUBE_API_KEY
 EMAIL_DEST=$EMAIL_DEST
 PLAYLIST_ID=$PLAYLIST_ID
 EMAIL_SUBJECT="[YPW] Change detected in Youtube playlist \$PLAYLIST_ID"
-ALERT_CMD="mail -s \$EMAIL_SUBJECT \$EMAIL_DEST"
+ALERT_CMD="mail -s '\$EMAIL_SUBJECT' \$EMAIL_DEST"
 ./youtube_playlist_watcher.py --playlist-id \$PLAYLIST_ID dump && \\
     ./youtube_playlist_watcher.py --playlist-id \$PLAYLIST_ID purge-dumps && \\
-    ./youtube_playlist_watcher.py --playlist-id \$PLAYLIST_ID compare --alert-cmd \$ALERT_CMD
+    ./youtube_playlist_watcher.py --playlist-id \$PLAYLIST_ID compare --alert-cmd "\$ALERT_CMD"
 EOF
 chmod u+x youtube_playlist_watcher_crontask.sh
 

@@ -80,12 +80,15 @@ def purge_dumps_command(args):
         os.unlink(dump)
 
 def compare_command(args):
-    dump1, dump2 = get_dumps(args)
     region_watched = AlertOnArgHelper.get_region_watched_for_restrictions(args.alert_on)
+    print('Detecting changes in playlist https://www.youtube.com/playlist?list={} in region {}'.format(args.playlist_id, region_watched))
+    dump1, dump2 = get_dumps(args)
     changes = get_changes(dump1, dump2, region_watched)
-    text_output = make_text_output(changes, args.playlist_id)
+    if not any(changes.values()):
+        return
+    text_output = make_text_output(changes)
     print(text_output)
-    alerting_changes = {type: items for (type, items) in changes.items() if type in args.alert_on}
+    alerting_changes = {type: items for (type, items) in changes.items() if type in args.alert_on and items}
     if alerting_changes and args.alert_cmd:
         subprocess.check_output(args.alert_cmd, input=bytes(text_output, 'UTF-8'), shell=True, stderr=subprocess.STDOUT)
 
@@ -116,7 +119,7 @@ def is_video_private(item):
 def get_video_region_restriction(item, region_watched):
     try:
         region_restriction = item['contentDetails']['regionRestriction']
-    except IndexError:
+    except KeyError:
         return '{}'
     watched_region_restriction = {}
     if region_watched in region_restriction.get('allowed', []):
@@ -129,10 +132,9 @@ def get_video_region_restriction(item, region_watched):
 ################################################################################
 ### Textual output generation
 
-def make_text_output(changes, playlist_id):
+def make_text_output(changes):
     output_lines_iterator = (list(getattr(OutputLinesIterator, type.lower())(changeset)) for (type, changeset) in changes.items())
-    return ('Playlist: https://www.youtube.com/playlist?list={}\n'.format(playlist_id)
-          + '\n'.join(sum(output_lines_iterator, [])))
+    return '\n'.join(sum(output_lines_iterator, []))
 
 class OutputLinesIterator:
     @staticmethod
