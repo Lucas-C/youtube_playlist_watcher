@@ -32,8 +32,10 @@ def parse_args(argv):
                                 help='can be just a prefix like 2015-01-01')
     compare_parser.add_argument('dump2_timestamp', nargs='?', metavar='DUMP2', default='LATEST', help='ditto')
     compare_parser.add_argument('--alert-on', type=lambda s: s.split(','),
-                                choices=AlertOnArgHelper(), default=AlertOnArgHelper.DEFAULTS,
+                                choices=('ADDED', 'REMOVED', 'BECAME_PRIVATE', 'REGION_RESTRICTION_CHANGE'),
+                                default=('REMOVED', 'BECAME_PRIVATE', 'REGION_RESTRICTION_CHANGE'),
                                 help='Comma-separated list of changes that trigger the "alert-cmd"')
+    compare_parser.add_argument('--region-watched', default='FR', help='Region watched for restrictions changes')
     compare_parser.add_argument('--alert-cmd', help='Command to run when a change is detected')
     dump_parser = subparsers.add_parser('dump', formatter_class=ArgparseHelpFormatter)
     dump_parser.set_defaults(exec_cmd=dump_command)
@@ -44,21 +46,6 @@ def parse_args(argv):
 
 class ArgparseHelpFormatter(argparse.RawTextHelpFormatter, argparse.ArgumentDefaultsHelpFormatter):
     pass
-
-class AlertOnArgHelper:
-    CONST_FLAGS = ('ADDED', 'REMOVED', 'BECAME_PRIVATE')
-    PREFIX_FLAG = 'REGION_RESTRICTION_CHANGE:'
-    DEFAULTS = (CONST_FLAGS[1:] + (PREFIX_FLAG + 'FR',))
-    def __contains__(self, flags):  # used to validate choices
-        return all((flag in self.CONST_FLAGS or (len(flag) == (len(self.PREFIX_FLAG) + 2) and flag.startswith(self.PREFIX_FLAG)))
-                   for flag in flags)
-    def __iter__(self):  # used to diplay choices
-        return iter(self.CONST_FLAGS + (self.PREFIX_FLAG + '**',))
-    @classmethod
-    def get_region_watched_for_restrictions(cls, alert_on):
-        for flag in alert_on:
-            if flag.startswith(cls.PREFIX_FLAG):
-                return flag[-2:]
 
 
 ################################################################################
@@ -80,17 +67,16 @@ def purge_dumps_command(args):
         os.unlink(dump)
 
 def compare_command(args):
-    region_watched = AlertOnArgHelper.get_region_watched_for_restrictions(args.alert_on)
-    print('Detecting changes in playlist https://www.youtube.com/playlist?list={} in region {}'.format(args.playlist_id, region_watched))
+    print('Detecting changes in playlist https://www.youtube.com/playlist?list={} in region {}'.format(args.playlist_id, args.region_watched))
     dump1, dump2 = get_dumps(args)
-    changes = get_changes(dump1, dump2, region_watched)
+    changes = get_changes(dump1, dump2, args.region_watched)
     if not any(changes.values()):
         return
     text_output = make_text_output(changes)
     print(text_output)
     alerting_changes = {type: items for (type, items) in changes.items() if type in args.alert_on and items}
     if alerting_changes and args.alert_cmd:
-        subprocess.check_output(args.alert_cmd, input=bytes(text_output, 'UTF-8'), shell=True, stderr=subprocess.STDOUT)
+        print(subprocess.check_output(args.alert_cmd, input=bytes(text_output, 'UTF-8'), shell=True, stderr=subprocess.STDOUT).decode("utf-8"))
 
 
 ################################################################################
