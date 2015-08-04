@@ -1,6 +1,6 @@
 #!/usr/bin/env python3.4
 
-import argparse, json, math, os, requests, string, subprocess, sys, time
+import argparse, json, math, os, requests, string, subprocess, sys, time, traceback
 from os.path import basename
 from glob import glob
 from tqdm import tqdm
@@ -67,6 +67,15 @@ def purge_dumps_command(args):
         os.unlink(dump)
 
 def compare_command(args):
+    try:
+        _compare_command(args)
+    except Exception:
+        if args.alert_cmd:
+            error_msg = ''.join(traceback.format_exception(*sys.exc_info()))
+            print(system_command(args.alert_cmd, error_msg))
+        raise
+
+def _compare_command(args):
     print('Detecting changes in playlist https://www.youtube.com/playlist?list={} in region {}'.format(args.playlist_id, args.region_watched))
     dump1, dump2 = get_dumps(args)
     changes = get_changes(dump1, dump2, args.region_watched)
@@ -76,8 +85,7 @@ def compare_command(args):
     print(text_output)
     alerting_changes = {type: items for (type, items) in changes.items() if type in args.alert_on and items}
     if alerting_changes and args.alert_cmd:
-        print(subprocess.check_output(args.alert_cmd, input=bytes(text_output, 'UTF-8'), shell=True, stderr=subprocess.STDOUT).decode("utf-8"))
-
+        print(system_command(args.alert_cmd, text_output))
 
 ################################################################################
 ### Video items utility functions
@@ -280,6 +288,9 @@ def add_content_details_to_playlist(content_details, playlist):
             playlist[index]['contentDetails'] = content_details[index - private_videos_count]['contentDetails']
         else:
             private_videos_count += 1
+
+def system_command(command, stdin):
+    return subprocess.check_output(command, input=bytes(stdin, 'UTF-8'), shell=True, stderr=subprocess.STDOUT).decode("utf-8")
 
 
 if __name__ == '__main__':
