@@ -13,9 +13,12 @@ and alert you with emails like this:
 
     SUBJECT: [YPW] Change detected in Youtube playlist FLF8xTv55ZmwikWWmWLPEAZQ
     Playlist: https://www.youtube.com/playlist?list=FLF8xTv55ZmwikWWmWLPEAZQ
-    REGION RESTRICTIONS CHANGED for Sade - The Best Of Sade | Full Album : {"blocked": ["DE"]}-> {}
+    REGION RESTRICTIONS CHANGED for Sade - The Best Of Sade | Full Album : {"blocked": ["DE"]}-> {} https://www.youtube.com/watch?v=zX8nZI8U9XY
+    -> find another video named like that: https://www.youtube.com/results?search_query=Sade+-+The+Best+Of+Sade+%7C+Full+Album
     BECAME PRIVATE: https://www.youtube.com/watch?v=T4ZCJzjufYs
-    REMOVED: The Cure - Burn 1994 HQ (The Crow) -> find another video named like that: https://www.youtube.com/results?search_query=The+Cure+-+Burn+1994+HQ+%28The+Crow%29
+    -> find another video named like that: https://www.youtube.com/results?search_query=Patrick+Bruel+%22J%27te+l%27dis+quand+m%C3%AAme%22
+    REMOVED: The Cure - Burn 1994 HQ (The Crow)
+    -> find another video named like that: https://www.youtube.com/results?search_query=The+Cure+-+Burn+1994+HQ+%28The+Crow%29
 
 ![](https://chezsoi.org/lucas/wwcb/photos/NinjaTurtlesPowerRangers.gif)
 
