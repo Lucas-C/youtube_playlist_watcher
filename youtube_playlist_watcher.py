@@ -32,8 +32,8 @@ def parse_args(argv):
                                 help='can be just a prefix like 2015-01-01')
     compare_parser.add_argument('dump2_timestamp', nargs='?', metavar='DUMP2', default='LATEST', help='ditto')
     compare_parser.add_argument('--alert-on', type=lambda s: s.split(','),
-                                choices=('ADDED', 'REMOVED', 'BECAME_PRIVATE', 'REGION_RESTRICTION_CHANGE'),
-                                default=('REMOVED', 'BECAME_PRIVATE', 'REGION_RESTRICTION_CHANGE'),
+                                choices=('ADDED', 'REMOVED', 'IS_PRIVATE', 'IS_BLOCKED_IN_REGION'),
+                                default=('REMOVED', 'IS_PRIVATE', 'IS_BLOCKED_IN_REGION'),
                                 help='Comma-separated list of changes that trigger the "alert-cmd"')
     compare_parser.add_argument('--region-watched', default='FR', help='Region watched for restrictions changes')
     compare_parser.add_argument('--alert-cmd', help='Command to run when a change is detected')
@@ -110,17 +110,16 @@ def is_video_private(item):
         raise EnvironmentError('Youtube Data API change detected')
     return True
 
-def get_video_region_restriction(item, region_watched):
+def is_video_blocked_in_region(item, region):
     try:
         region_restriction = item['contentDetails']['regionRestriction']
     except KeyError:
-        return '{}'
-    watched_region_restriction = {}
-    if region_watched in region_restriction.get('allowed', []):
-        watched_region_restriction['allowed'] = region_watched
-    if region_watched in region_restriction.get('blocked', []):
-        watched_region_restriction['blocked'] = region_watched
-    return json.dumps(watched_region_restriction)
+        return False
+    if region in region_restriction.get('blocked', []):
+        return True
+    if 'allowed' in region_restriction:
+        return region not in region_restriction['allowed']
+    return False
 
 
 ################################################################################
@@ -141,16 +140,15 @@ class OutputLinesIterator:
             yield ('REMOVED: ' + get_video_title(old_item)
                  + '\n -> find another video named like that: ' + get_title_based_search_url(old_item))
     @staticmethod
-    def region_restriction_change(changeset):
-        for _, (new_item, old_restricts, new_restricts) in changeset.items():
-            yield ('REGION RESTRICTIONS CHANGED for ' + get_video_title(new_item) + ' : '
-                 + old_restricts + '-> ' + new_restricts + ' ' + get_video_url(new_item)
+    def is_blocked_in_region(changeset):
+        for new_item, region in changeset:
+            yield ('IS BLOCKED IN REGION "' + region + '" : ' + get_video_title(new_item) + ' ' + get_video_url(new_item)
                  + '\n -> find another video named like that: ' + get_title_based_search_url(new_item))
     @staticmethod
-    def became_private(changeset):
+    def is_private(changeset):
         for old_item in changeset:
             video_name = get_video_title(old_item) if not is_video_private(old_item) else get_video_url(old_item)
-            yield ('BECAME PRIVATE: ' + video_name
+            yield ('IS PRIVATE: ' + video_name
                  + '\n -> find another video named like that: ' + get_title_based_search_url(old_item))
 
 
@@ -159,20 +157,19 @@ class OutputLinesIterator:
 
 def get_changes(dump1, dump2, region_watched):
     changes = {}
-    changes['BECAME_PRIVATE'] = [item for item in dump2 if is_video_private(item)]
+    changes['IS_PRIVATE'] = [item for item in dump2 if is_video_private(item)]
     dump1_by_vid = {get_video_id(item): item for item in dump1}
     dump2_by_vid = {get_video_id(item): item for item in dump2}
     added_vids = dump2_by_vid.keys() - dump1_by_vid.keys()
     changes['ADDED'] = [dump2_by_vid[vid] for vid in added_vids]
     removed_vids = dump1_by_vid.keys() - dump2_by_vid.keys()
-    changes['REMOVED'] = [dump1_by_vid[vid] for vid in removed_vids if not is_video_private(dump1_by_vid[vid])]
+    def should_ignore_removed_video(item):
+        if region_watched and is_video_blocked_in_region(item, region_watched):
+            return True
+        return is_video_private(item)
+    changes['REMOVED'] = [dump1_by_vid[vid] for vid in removed_vids if not should_ignore_removed_video(dump1_by_vid[vid])]
     if region_watched:
-        common_vids = dump2_by_vid.keys() & dump1_by_vid.keys()
-        common_public_vids = [vid for vid in common_vids if not is_video_private(dump2_by_vid[vid])]
-        dump1_restricts = {vid: get_video_region_restriction(dump1_by_vid[vid], region_watched) for vid in common_public_vids}
-        dump2_restricts = {vid: get_video_region_restriction(dump2_by_vid[vid], region_watched) for vid in common_public_vids}
-        changes['REGION_RESTRICTION_CHANGE'] = {vid: (dump2_by_vid[vid], dump1_restricts[vid], dump2_restricts[vid]) for vid in common_public_vids
-                                                if dump1_restricts[vid] != dump2_restricts[vid]}
+        changes['IS_BLOCKED_IN_REGION'] = [(item, region_watched) for item in dump2 if is_video_blocked_in_region(item, region_watched)]
     return changes
 
 
