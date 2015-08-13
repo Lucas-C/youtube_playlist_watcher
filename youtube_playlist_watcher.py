@@ -76,12 +76,11 @@ def compare_command(args):
         raise
 
 def _compare_command(args):
-    print('Detecting changes in playlist https://www.youtube.com/playlist?list={} in region {}'.format(args.playlist_id, args.region_watched))
     dump1, dump2 = get_dumps(args)
     changes = get_changes(dump1, dump2, args.region_watched)
     if not any(changes.values()):
         return
-    text_output = make_text_output(changes)
+    text_output = make_text_output(args, changes)
     print(text_output)
     alerting_changes = {type: items for (type, items) in changes.items() if type in args.alert_on and items}
     if alerting_changes and args.alert_cmd:
@@ -125,9 +124,10 @@ def is_video_blocked_in_region(item, region):
 ################################################################################
 ### Textual output generation
 
-def make_text_output(changes):
+def make_text_output(args, changes):
+    header = 'Changes detected in playlist https://www.youtube.com/playlist?list={} in region {}'.format(args.playlist_id, args.region_watched)
     output_lines_iterator = (list(getattr(OutputLinesIterator, type.lower())(changeset)) for (type, changeset) in changes.items())
-    return '\n'.join(sum(output_lines_iterator, []))
+    return '\n'.join(sum(output_lines_iterator, [header]))
 
 class OutputLinesIterator:
     @staticmethod
@@ -143,6 +143,7 @@ class OutputLinesIterator:
     def is_blocked_in_region(changeset):
         for new_item, region in changeset:
             yield ('IS BLOCKED IN REGION "' + region + '" : ' + get_video_title(new_item) + ' ' + get_video_url(new_item)
+                 + '\n  (you can still access this video and quickly remove it from your playlist from the drop-down menu under its title)'
                  + '\n -> find another video named like that: ' + get_title_based_search_url(new_item))
     @staticmethod
     def is_private(changeset):
