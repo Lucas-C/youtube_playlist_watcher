@@ -8,7 +8,6 @@ from urllib.parse import urlencode
 
 DUMP_FILENAME_TEMPLATE = 'youtube-playlist-{playlist_id}-{timestamp}.json'
 ISO8601_TIMESTAMP_FORMAT = '%Y%m%d%H%M%S'
-YOUTUBE_API_KEY = os.environ['YOUTUBE_API_KEY']
 PLAYLIST_ITEMS_REQUEST_BATCH_SIZE = 50
 CONTENT_DETAILS_REQUEST_BATCH_SIZE = 50
 THIS_SCRIPT_PARENT_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -32,17 +31,22 @@ def parse_args(argv):
                                 help='can be just a prefix like 2015-01-01')
     compare_parser.add_argument('dump2_timestamp', nargs='?', metavar='DUMP2', default='LATEST', help='ditto')
     compare_parser.add_argument('--alert-on', type=lambda s: s.split(','),
-                                choices=('ADDED', 'REMOVED', 'IS_PRIVATE', 'IS_BLOCKED_IN_REGION'),
-                                default=('REMOVED', 'IS_PRIVATE', 'IS_BLOCKED_IN_REGION'),
+                                choices=SublistChoices(('ADDED', 'REMOVED', 'DELETED', 'IS_PRIVATE', 'IS_BLOCKED_IN_REGION')),
+                                default=('DELETED', 'IS_PRIVATE', 'IS_BLOCKED_IN_REGION'),
                                 help='Comma-separated list of changes that trigger the "alert-cmd"')
     compare_parser.add_argument('--region-watched', default='FR', help='Region watched for restrictions changes')
     compare_parser.add_argument('--alert-cmd', help='Command to run when a change is detected')
     dump_parser = subparsers.add_parser('dump', formatter_class=ArgparseHelpFormatter)
     dump_parser.set_defaults(exec_cmd=dump_command)
+    dump_parser.add_argument('--youtube-api-key', required=True)
     purge_dumps_parser = subparsers.add_parser('purge-dumps', formatter_class=ArgparseHelpFormatter)
     purge_dumps_parser.add_argument('--keep-count', type=int, default=50, help='Number of JSON dumps to keep')
     purge_dumps_parser.set_defaults(exec_cmd=purge_dumps_command)
     return parser.parse_args(argv)
+
+class SublistChoices(set):
+    def __contains__(self, l):
+        return set(l).issubset(self)
 
 class ArgparseHelpFormatter(argparse.RawTextHelpFormatter, argparse.ArgumentDefaultsHelpFormatter):
     pass
@@ -52,8 +56,8 @@ class ArgparseHelpFormatter(argparse.RawTextHelpFormatter, argparse.ArgumentDefa
 ### Main CLI commands
 
 def dump_command(args):
-    playlist = get_playlist_with_progressbar(args.playlist_id)
-    content_details = get_content_details_with_progressbar(playlist)
+    playlist = get_playlist_with_progressbar(args.youtube_api_key, args.playlist_id)
+    content_details = get_content_details_with_progressbar(args.youtube_api_key, playlist)
     add_content_details_to_playlist(content_details, playlist)
     dump_to_file(playlist, args.playlist_id, args.backup_dir)
 
@@ -101,6 +105,9 @@ def get_video_title(item):
 def get_title_based_search_url(item):
     return 'https://www.youtube.com/results?' + urlencode({'search_query': get_video_title(item)})
 
+def is_video_deleted(item):
+    return item['snippet']['title'] == 'Deleted video' and item['snippet']['description'] == 'This video is unavailable.'
+
 def is_video_private(item):
     # Alt: retrieve the 'status' part (quota cost 2) -> item['status']['privacyStatus'] == 'private'
     if item['snippet']['description'] != 'This video is private.' and item['snippet']['title'] != 'Private video':
@@ -125,7 +132,8 @@ def is_video_blocked_in_region(item, region):
 ### Textual output generation
 
 def make_text_output(args, changes):
-    header = 'Changes detected in playlist https://www.youtube.com/playlist?list={} in region {}'.format(args.playlist_id, args.region_watched)
+    header = '[YPW] Changes detected in playlist https://www.youtube.com/playlist?list={} (region watched: {})'.format(
+            args.playlist_id, args.region_watched)
     output_lines_iterator = (list(getattr(OutputLinesIterator, type.lower())(changeset)) for (type, changeset) in changes.items())
     return '\n'.join(sum(output_lines_iterator, [header]))
 
@@ -138,6 +146,11 @@ class OutputLinesIterator:
     def removed(changeset):
         for old_item in changeset:
             yield ('REMOVED: ' + get_video_title(old_item)
+                 + '\n -> find another video named like that: ' + get_title_based_search_url(old_item))
+    @staticmethod
+    def deleted(changeset):
+        for old_item in changeset:
+            yield ('DELETED: ' + get_video_title(old_item)
                  + '\n -> find another video named like that: ' + get_title_based_search_url(old_item))
     @staticmethod
     def is_blocked_in_region(changeset):
@@ -165,10 +178,13 @@ def get_changes(dump1, dump2, region_watched):
     changes['ADDED'] = [dump2_by_vid[vid] for vid in added_vids]
     removed_vids = dump1_by_vid.keys() - dump2_by_vid.keys()
     def should_ignore_removed_video(item):
-        if region_watched and is_video_blocked_in_region(item, region_watched):
-            return True
-        return is_video_private(item)
+        return any([
+            region_watched and is_video_blocked_in_region(item, region_watched),
+            is_video_private(item),
+            is_video_deleted(item),
+        ])
     changes['REMOVED'] = [dump1_by_vid[vid] for vid in removed_vids if not should_ignore_removed_video(dump1_by_vid[vid])]
+    changes['DELETED'] = [dump1_by_vid[vid] for vid in dump2_by_vid.keys() if is_video_deleted(dump2_by_vid[vid])]
     if region_watched:
         changes['IS_BLOCKED_IN_REGION'] = [(item, region_watched) for item in dump2 if is_video_blocked_in_region(item, region_watched)]
     return changes
@@ -230,9 +246,9 @@ def find_dump_filename_for_timestamp(backup_dir, playlist_id, timestamp_prefix):
 ################################################################################
 ### Youtube Data API requests with progress bar
 
-def get_playlist_with_progressbar(playlist_id):
+def get_playlist_with_progressbar(youtube_api_key, playlist_id):
     print('Getting all videos from Youtube playlist')
-    paginated_playlist_iterator = list_playlist_videos_paginated(playlist_id)
+    paginated_playlist_iterator = list_playlist_videos_paginated(youtube_api_key, playlist_id)
     first_page = next(paginated_playlist_iterator)
     if 'error' in first_page:
         raise EnvironmentError(first_page)
@@ -242,11 +258,11 @@ def get_playlist_with_progressbar(playlist_id):
         playlist.extend(page['items'])
     return playlist
 
-def list_playlist_videos_paginated(playlist_id):
+def list_playlist_videos_paginated(youtube_api_key, playlist_id):
     page_token = None
     while page_token is not False:
         response = requests.get('https://www.googleapis.com/youtube/v3/playlistItems', params={
-            'key': YOUTUBE_API_KEY,
+            'key': youtube_api_key,
             'playlistId': playlist_id,
             'pageToken': page_token,
             'maxResults': PLAYLIST_ITEMS_REQUEST_BATCH_SIZE,
@@ -255,10 +271,10 @@ def list_playlist_videos_paginated(playlist_id):
         yield response
         page_token = response.get('nextPageToken', False)
 
-def get_content_details_with_progressbar(playlist):
+def get_content_details_with_progressbar(youtube_api_key, playlist):
     print('Getting region restrictions for each video')
     video_ids = [item['snippet']['resourceId']['videoId'] for item in playlist]
-    paginated_playlist_iterator = list_content_details_paginated(video_ids)
+    paginated_playlist_iterator = list_content_details_paginated(youtube_api_key, video_ids)
     content_details = []
     pages_count = math.floor(float(len(video_ids)) / CONTENT_DETAILS_REQUEST_BATCH_SIZE)
     for page in tqdm(paginated_playlist_iterator, total=pages_count):
@@ -267,12 +283,12 @@ def get_content_details_with_progressbar(playlist):
         content_details.extend(page['items'])
     return content_details
 
-def list_content_details_paginated(video_ids):
+def list_content_details_paginated(youtube_api_key, video_ids):
     batch_start_index = 0
     while batch_start_index < len(video_ids):
         videos_ids_batch = video_ids[batch_start_index:batch_start_index + CONTENT_DETAILS_REQUEST_BATCH_SIZE]
         response = requests.get('https://www.googleapis.com/youtube/v3/videos', params={
-            'key': YOUTUBE_API_KEY,
+            'key': youtube_api_key,
             'id': ','.join(videos_ids_batch),  # it is not clearly documented, but the API does not accept more than 50 ids here
             'maxResults': CONTENT_DETAILS_REQUEST_BATCH_SIZE,
             'part': 'contentDetails',  # total quota cost: 2
