@@ -33,11 +33,12 @@ was_edited_today () {
 
 if [ -s ~/.ypw_last_report ] && ! tail -n 1 ~/.ypw_last_report | grep -qF 'this report was displayed in shell'; then
     cat ~/.ypw_last_report
+    echo
     echo '(this report is kept at ~/.ypw_last_report)'
     date "+(this report was displayed in shell on %c)" >> ~/.ypw_last_report
 elif ! [ -e ~/.ypw_last_report ] || ! was_edited_today ~/.ypw_last_report; then
     echo -n > ~/.ypw_last_report  # This ensures no other report generation will be launched today
-    echo "[YPW] Generating Youtube Playlist Watcher report in background"
+    echo "[YPW] Generating playlist changes report in background"
     ypw_check >~/.ypw_output.log 2>&1 &
 fi
 

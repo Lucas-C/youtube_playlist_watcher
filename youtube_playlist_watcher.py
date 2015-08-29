@@ -297,12 +297,12 @@ def list_content_details_paginated(youtube_api_key, video_ids):
         batch_start_index += CONTENT_DETAILS_REQUEST_BATCH_SIZE
 
 def add_content_details_to_playlist(content_details, playlist):
-    private_videos_count = 0
-    for index in range(len(playlist)):
-        if not is_video_private(playlist[index]):
-            playlist[index]['contentDetails'] = content_details[index - private_videos_count]['contentDetails']
+    skipped_videos_count = 0
+    for index, video_item in enumerate(playlist):
+        if is_video_private(video_item) or is_video_deleted(video_item):
+            skipped_videos_count += 1
         else:
-            private_videos_count += 1
+            video_item['contentDetails'] = content_details[index - skipped_videos_count]['contentDetails']
 
 def system_command(command, stdin):
     return subprocess.check_output(command, input=bytes(stdin, 'UTF-8'), shell=True, stderr=subprocess.STDOUT).decode("utf-8")
