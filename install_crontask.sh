@@ -15,6 +15,7 @@ echo -e "Creating youtube_playlist_watcher_crontask.sh with content:\n"
 cat <<EOF | tee youtube_playlist_watcher_crontask.sh
 #!/bin/bash
 set -o pipefail -o errexit -o nounset
+date
 PLAYLIST_ID=$PLAYLIST_ID
 EMAIL_SUBJECT="[YPW] Change detected in Youtube playlist \$PLAYLIST_ID"
 ALERT_CMD="mail -s '\$EMAIL_SUBJECT' $EMAIL_DEST"

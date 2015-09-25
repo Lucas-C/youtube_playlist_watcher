@@ -9,7 +9,7 @@ from urllib.parse import urlencode
 DUMP_FILENAME_TEMPLATE = 'youtube-playlist-{playlist_id}-{timestamp}.json'
 ISO8601_TIMESTAMP_FORMAT = '%Y%m%d%H%M%S'
 PLAYLIST_ITEMS_REQUEST_BATCH_SIZE = 50
-CONTENT_DETAILS_REQUEST_BATCH_SIZE = 50
+VIDEOS_DETAILS_REQUEST_BATCH_SIZE = 50
 THIS_SCRIPT_PARENT_DIR = os.path.dirname(os.path.realpath(__file__))
 
 def main(argv):
@@ -57,13 +57,13 @@ class ArgparseHelpFormatter(argparse.RawTextHelpFormatter, argparse.ArgumentDefa
 
 def dump_command(args):
     playlist = get_playlist_with_progressbar(args.youtube_api_key, args.playlist_id)
-    content_details = get_content_details_with_progressbar(args.youtube_api_key, playlist)
-    add_content_details_to_playlist(content_details, playlist)
+    videos_details = get_videos_details_with_progressbar(args.youtube_api_key, playlist)
+    add_videos_details_to_playlist(videos_details, playlist)
     dump_to_file(playlist, args.playlist_id, args.backup_dir)
 
 def purge_dumps_command(args):
     all_dumps = get_all_dumps_sorted_by_date(args.backup_dir, args.playlist_id)
-    dumps_to_remove = all_dumps[args.keep_count:]
+    dumps_to_remove = all_dumps[:-args.keep_count]
     if not dumps_to_remove:
         return
     print('Now removing the following dumps: {}'.format(' '.join([basename(f) for f in dumps_to_remove])))
@@ -106,7 +106,12 @@ def get_title_based_search_url(item):
     return 'https://www.youtube.com/results?' + urlencode({'search_query': get_video_title(item)})
 
 def is_video_deleted(item):
-    return item['snippet']['title'] == 'Deleted video' and item['snippet']['description'] == 'This video is unavailable.'
+    snippet = item.get('snippet', None)
+    if snippet and snippet['title'] == 'Deleted video' and snippet['description'] == 'This video is unavailable.':
+        return True
+    if 'status' in item:
+        return item['status']['uploadStatus'] != 'processed'
+    return False
 
 def is_video_private(item):
     # Alt: retrieve the 'status' part (quota cost 2) -> item['status']['privacyStatus'] == 'private'
@@ -266,43 +271,44 @@ def list_playlist_videos_paginated(youtube_api_key, playlist_id):
             'playlistId': playlist_id,
             'pageToken': page_token,
             'maxResults': PLAYLIST_ITEMS_REQUEST_BATCH_SIZE,
-            'part': 'snippet',  # total quota cost: 2
+            'part': 'snippet',  # total quota cost: 1 (base) + 2
         }).json()
         yield response
         page_token = response.get('nextPageToken', False)
 
-def get_content_details_with_progressbar(youtube_api_key, playlist):
+def get_videos_details_with_progressbar(youtube_api_key, playlist):
     print('Getting region restrictions for each video')
     video_ids = [item['snippet']['resourceId']['videoId'] for item in playlist]
-    paginated_playlist_iterator = list_content_details_paginated(youtube_api_key, video_ids)
-    content_details = []
-    pages_count = math.floor(float(len(video_ids)) / CONTENT_DETAILS_REQUEST_BATCH_SIZE)
+    paginated_playlist_iterator = list_videos_details_paginated(youtube_api_key, video_ids)
+    videos_details = []
+    pages_count = math.floor(float(len(video_ids)) / VIDEOS_DETAILS_REQUEST_BATCH_SIZE)
     for page in tqdm(paginated_playlist_iterator, total=pages_count):
         if 'error' in page:
             raise EnvironmentError(page)
-        content_details.extend(page['items'])
-    return content_details
+        videos_details.extend(page['items'])
+    return videos_details
 
-def list_content_details_paginated(youtube_api_key, video_ids):
+def list_videos_details_paginated(youtube_api_key, video_ids):
     batch_start_index = 0
     while batch_start_index < len(video_ids):
-        videos_ids_batch = video_ids[batch_start_index:batch_start_index + CONTENT_DETAILS_REQUEST_BATCH_SIZE]
+        videos_ids_batch = video_ids[batch_start_index:batch_start_index + VIDEOS_DETAILS_REQUEST_BATCH_SIZE]
         response = requests.get('https://www.googleapis.com/youtube/v3/videos', params={
             'key': youtube_api_key,
             'id': ','.join(videos_ids_batch),  # it is not clearly documented, but the API does not accept more than 50 ids here
-            'maxResults': CONTENT_DETAILS_REQUEST_BATCH_SIZE,
-            'part': 'contentDetails',  # total quota cost: 2
+            'maxResults': VIDEOS_DETAILS_REQUEST_BATCH_SIZE,
+            'part': 'contentDetails,status',  # total quota cost: 1 (base) + 2 + 2
         }).json()
         yield response
-        batch_start_index += CONTENT_DETAILS_REQUEST_BATCH_SIZE
+        batch_start_index += VIDEOS_DETAILS_REQUEST_BATCH_SIZE
 
-def add_content_details_to_playlist(content_details, playlist):
+def add_videos_details_to_playlist(videos_details, playlist):
     skipped_videos_count = 0
     for index, video_item in enumerate(playlist):
+        video_details = videos_details[index - skipped_videos_count]
         if is_video_private(video_item) or is_video_deleted(video_item):
             skipped_videos_count += 1
         else:
-            video_item['contentDetails'] = content_details[index - skipped_videos_count]['contentDetails']
+            video_item.update(video_details)
 
 def system_command(command, stdin):
     return subprocess.check_output(command, input=bytes(stdin, 'UTF-8'), shell=True, stderr=subprocess.STDOUT).decode("utf-8")
