@@ -178,7 +178,7 @@ def get_changes(dump1, dump2, region_watched):
     changes = {}
     dump1_by_vid = {get_video_id(item): item for item in dump1}
     dump2_by_vid = {get_video_id(item): item for item in dump2}
-    common_vids = [(dump1_by_vid[vid], dump2_by_vid[vid]) for vid in set(dump2_by_vid.keys())|set(dump1_by_vid.keys())]
+    common_vids = [(dump1_by_vid[vid], dump2_by_vid[vid]) for vid in set(dump2_by_vid.keys())&set(dump1_by_vid.keys())]
     changes['IS_PRIVATE'] = [old_item for (old_item, new_item) in common_vids if is_video_private(new_item)]
     added_vids = dump2_by_vid.keys() - dump1_by_vid.keys()
     changes['ADDED'] = [dump2_by_vid[vid] for vid in added_vids]
