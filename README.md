@@ -88,6 +88,8 @@ Or use the power Luke: READ THE SOURCE !
 
 ## Contributing
 
+[![Requirements Status](https://requires.io/github/Lucas-C/youtube_playlist_watcher/requirements.svg?branch=master)](https://requires.io/github/Lucas-C/youtube_playlist_watcher/requirements/?branch=master)
+
 Bug reports or features suggestions are warmly welcome !
 
 For the devs:
