@@ -21,6 +21,7 @@ def main(argv):
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(description='Dump & compare the content of Youtube playlists',
+	                                 fromfile_prefix_chars='@',
                                      formatter_class=ArgparseHelpFormatter)
     parser.add_argument('--playlist-id', required=True)
     parser.add_argument('--backup-dir', default=THIS_SCRIPT_PARENT_DIR, help='folder where dumps are stored')
@@ -150,12 +151,12 @@ class OutputLinesIterator:
     @staticmethod
     def removed(changeset):
         for old_item in changeset:
-            yield ('REMOVED: ' + get_video_title(old_item)
+            yield ('REMOVED: ' + get_video_title(old_item) + ' ' + get_video_url(old_item)
                  + '\n -> find another video named like that: ' + get_title_based_search_url(old_item))
     @staticmethod
     def deleted(changeset):
         for old_item in changeset:
-            yield ('DELETED: ' + get_video_title(old_item)
+            yield ('DELETED: ' + get_video_title(old_item) + ' ' + get_video_url(old_item)
                  + '\n -> find another video named like that: ' + get_title_based_search_url(old_item))
     @staticmethod
     def is_blocked_in_region(changeset):
@@ -166,8 +167,8 @@ class OutputLinesIterator:
     @staticmethod
     def is_private(changeset):
         for old_item in changeset:
-            video_name = get_video_title(old_item) if not is_video_private(old_item) else get_video_url(old_item)
-            yield ('IS PRIVATE: ' + video_name
+            video_name = get_video_title(old_item) if not is_video_private(old_item) else ''
+            yield ('IS PRIVATE: ' + video_name + ' ' + get_video_url(old_item)
                  + '\n -> find another video named like that: ' + get_title_based_search_url(old_item))
 
 
@@ -178,7 +179,7 @@ def get_changes(dump1, dump2, region_watched):
     changes = {}
     dump1_by_vid = {get_video_id(item): item for item in dump1}
     dump2_by_vid = {get_video_id(item): item for item in dump2}
-    common_vids = [(dump1_by_vid[vid], dump2_by_vid[vid]) for vid in set(dump2_by_vid.keys())&set(dump1_by_vid.keys())]
+    common_vids = [(dump1_by_vid[vid], dump2_by_vid[vid]) for vid in set(dump2_by_vid.keys())|set(dump1_by_vid.keys())]
     changes['IS_PRIVATE'] = [old_item for (old_item, new_item) in common_vids if is_video_private(new_item)]
     added_vids = dump2_by_vid.keys() - dump1_by_vid.keys()
     changes['ADDED'] = [dump2_by_vid[vid] for vid in added_vids]
