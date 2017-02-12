@@ -82,6 +82,8 @@ def compare_command(args):
 
 def _compare_command(args):
     dump1, dump2 = get_dumps(args)
+    add_indices(dump1)
+    add_indices(dump2)
     changes = get_changes(dump1, dump2, args.region_watched)
     if not any(changes.values()):
         return
@@ -169,10 +171,15 @@ class OutputLinesIterator:
                  + '\n -> find another video named like that: ' + get_search_url(video_name))
     @staticmethod
     def is_private(changeset, args):
-        for old_item in changeset:
+        for new_item, old_item in changeset:
             video_name = get_video_name(old_item) if not is_video_private(old_item) else retrieve_video_name_from_prev_dumps(get_video_id(old_item), args)
-            yield ('IS PRIVATE: ' + video_name + ' ' + get_video_url(old_item)
+            yield ('IS PRIVATE: ' + video_name + ' ' + get_video_url(new_item)
+                 + ' ({}th video in the playlist)'.format(new_item['index'])
                  + '\n -> find another video named like that: ' + get_search_url(video_name))
+
+def add_indices(dump):
+    for i, item in enumerate(dump):
+        item['index'] = i + 1
 
 def retrieve_video_name_from_prev_dumps(video_id, args):
     for dump in get_all_dumps_contents_sorted_by_date(args.backup_dir, args.playlist_id):
@@ -193,7 +200,7 @@ def get_changes(dump1, dump2, region_watched):
     dump1_by_vid = {get_video_id(item): item for item in dump1}
     dump2_by_vid = {get_video_id(item): item for item in dump2}
     common_vids = [(dump1_by_vid[vid], dump2_by_vid[vid]) for vid in set(dump2_by_vid.keys())&set(dump1_by_vid.keys())]
-    changes['IS_PRIVATE'] = [old_item for (old_item, new_item) in common_vids if is_video_private(new_item)]
+    changes['IS_PRIVATE'] = [(new_item, old_item) for (old_item, new_item) in common_vids if is_video_private(new_item)]
     added_vids = dump2_by_vid.keys() - dump1_by_vid.keys()
     changes['ADDED'] = [dump2_by_vid[vid] for vid in added_vids]
     removed_vids = dump1_by_vid.keys() - dump2_by_vid.keys()
