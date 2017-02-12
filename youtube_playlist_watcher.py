@@ -21,7 +21,7 @@ def main(argv):
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(description='Dump & compare the content of Youtube playlists',
-	                             fromfile_prefix_chars='@',
+                                     fromfile_prefix_chars='@',
                                      formatter_class=ArgparseHelpFormatter)
     parser.add_argument('--playlist-id', required=True)
     parser.add_argument('--backup-dir', default=THIS_SCRIPT_PARENT_DIR, help='folder where dumps are stored')
@@ -100,11 +100,11 @@ def get_video_id(item):
 def get_video_url(item):
     return 'https://www.youtube.com/watch?v=' + get_video_id(item)
 
-def get_video_title(item):
+def get_video_name(item):
     return item['snippet']['title']
 
-def get_title_based_search_url(item):
-    return 'https://www.youtube.com/results?' + urlencode({'search_query': get_video_title(item)})
+def get_search_url(video_name):
+    return 'https://www.youtube.com/results?' + urlencode({'search_query': video_name})
 
 def is_video_deleted(item):
     snippet = item.get('snippet', None)
@@ -140,36 +140,49 @@ def is_video_blocked_in_region(item, region):
 def make_text_output(args, changes):
     header = '[YPW] Changes detected in playlist https://www.youtube.com/playlist?list={} (region watched: {})'.format(
             args.playlist_id, args.region_watched)
-    output_lines_iterator = (list(getattr(OutputLinesIterator, type.lower())(changeset)) for (type, changeset) in changes.items())
+    output_lines_iterator = (list(getattr(OutputLinesIterator, changetype.lower())(changeset, args)) for (changetype, changeset) in changes.items())
     return '\n'.join(sum(output_lines_iterator, [header]))
 
 class OutputLinesIterator:
     @staticmethod
-    def added(changeset):
+    def added(changeset, *_):
         for new_item in changeset:
-            yield 'ADDED: ' + get_video_title(new_item) + ' ' + get_video_url(new_item)
+            yield 'ADDED: ' + get_video_name(new_item) + ' ' + get_video_url(new_item)
     @staticmethod
-    def removed(changeset):
+    def removed(changeset, *_):
         for old_item in changeset:
-            yield ('REMOVED: ' + get_video_title(old_item) + ' ' + get_video_url(old_item)
-                 + '\n -> find another video named like that: ' + get_title_based_search_url(old_item))
+            video_name = get_video_name(old_item)
+            yield ('REMOVED: ' + video_name + ' ' + get_video_url(old_item)
+                 + '\n -> find another video named like that: ' + get_search_url(video_name))
     @staticmethod
-    def deleted(changeset):
+    def deleted(changeset, *_):
         for old_item in changeset:
-            yield ('DELETED: ' + get_video_title(old_item) + ' ' + get_video_url(old_item)
-                 + '\n -> find another video named like that: ' + get_title_based_search_url(old_item))
+            video_name = get_video_name(old_item)
+            yield ('DELETED: ' + get_video_name(old_item) + ' ' + get_video_url(old_item)
+                 + '\n -> find another video named like that: ' + get_search_url(video_name))
     @staticmethod
-    def is_blocked_in_region(changeset):
+    def is_blocked_in_region(changeset, *_):
         for new_item, region in changeset:
-            yield ('IS BLOCKED IN REGION "' + region + '" : ' + get_video_title(new_item) + ' ' + get_video_url(new_item)
+            video_name = get_video_name(old_item)
+            yield ('IS BLOCKED IN REGION "' + region + '" : ' + get_video_name(new_item) + ' ' + get_video_url(new_item)
                  + '\n  (you can still access this video and quickly remove it from your playlist from the drop-down menu under its title)'
-                 + '\n -> find another video named like that: ' + get_title_based_search_url(new_item))
+                 + '\n -> find another video named like that: ' + get_search_url(video_name))
     @staticmethod
-    def is_private(changeset):
+    def is_private(changeset, args):
         for old_item in changeset:
-            video_name = get_video_title(old_item) if not is_video_private(old_item) else ''
+            video_name = get_video_name(old_item) if not is_video_private(old_item) else retrieve_video_name_from_prev_dumps(get_video_id(old_item), args)
             yield ('IS PRIVATE: ' + video_name + ' ' + get_video_url(old_item)
-                 + '\n -> find another video named like that: ' + get_title_based_search_url(old_item))
+                 + '\n -> find another video named like that: ' + get_search_url(video_name))
+
+def retrieve_video_name_from_prev_dumps(video_id, args):
+    for dump in get_all_dumps_contents_sorted_by_date(args.backup_dir, args.playlist_id):
+        try:
+            prev_same_video = next(item for item in dump if get_video_id(item) == video_id)
+        except StopIteration:
+            return ''
+        if not is_video_private(prev_same_video):
+            return get_video_name(prev_same_video)
+    return ''
 
 
 ################################################################################
@@ -236,6 +249,11 @@ def get_all_dumps_sorted_by_date(backup_dir, playlist_id):
     file_pattern = DUMP_FILENAME_TEMPLATE.format(playlist_id=playlist_id, timestamp='*')
     # given the naming convention, lexicographical ordering is enough to sort by date
     return sorted(glob(os.path.join(backup_dir, file_pattern)))
+
+def get_all_dumps_contents_sorted_by_date(backup_dir, playlist_id):
+    for dump_path in get_all_dumps_sorted_by_date(backup_dir, playlist_id):
+        with open(dump_path, 'r') as dump_file:
+            yield json.load(dump_file)
 
 def find_dump_filename_for_timestamp(backup_dir, playlist_id, timestamp_prefix):
     timestamp_prefix = ''.join(d for d in timestamp_prefix if d in string.digits)  # getting rid of any extra ponctuation
