@@ -165,7 +165,7 @@ class OutputLinesIterator:
     @staticmethod
     def is_blocked_in_region(changeset, *_):
         for new_item, region in changeset:
-            video_name = get_video_name(old_item)
+            video_name = get_video_name(new_item)
             yield ('IS BLOCKED IN REGION "' + region + '" : ' + get_video_name(new_item) + ' ' + get_video_url(new_item)
                  + '\n  (you can still access this video and quickly remove it from your playlist from the drop-down menu under its title)'
                  + '\n -> find another video named like that: ' + get_search_url(video_name))
