@@ -161,6 +161,7 @@ class OutputLinesIterator:
         for old_item in changeset:
             video_name = get_video_name(old_item)
             yield ('DELETED: ' + get_video_name(old_item) + ' ' + get_video_url(old_item)
+                 + ' ({}th video in the playlist)'.format(old_item['index'])
                  + '\n -> find another video named like that: ' + get_search_url(video_name))
     @staticmethod
     def is_blocked_in_region(changeset, *_):
