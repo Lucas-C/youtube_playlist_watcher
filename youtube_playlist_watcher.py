@@ -159,7 +159,7 @@ class OutputLinesIterator:
     @staticmethod
     def deleted(changeset, *_):
         for old_item in changeset:
-            video_name = get_video_name(old_item)
+            video_name = get_video_name(old_item) if not is_video_deleted(old_item) else retrieve_video_name_from_prev_dumps(get_video_id(old_item), args)
             yield ('DELETED: ' + get_video_name(old_item) + ' ' + get_video_url(old_item)
                  + ' ({}th video in the playlist)'.format(old_item['index'])
                  + '\n -> find another video named like that: ' + get_search_url(video_name))
@@ -188,7 +188,7 @@ def retrieve_video_name_from_prev_dumps(video_id, args):
             prev_same_video = next(item for item in dump if get_video_id(item) == video_id)
         except StopIteration:
             return ''
-        if not is_video_private(prev_same_video):
+        if not is_video_private(prev_same_video) and not is_video_deleted(prev_same_video):
             return get_video_name(prev_same_video)
     return ''
 
