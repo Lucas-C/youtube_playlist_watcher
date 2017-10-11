@@ -46,7 +46,7 @@ To install it, run the following in a console (just remember to substitute the `
     wget https://rawgit.com/Lucas-C/youtube_playlist_watcher/master/youtube_playlist_watcher.py
     wget https://rawgit.com/Lucas-C/youtube_playlist_watcher/master/install_bashrc_banner.sh
     chmod u+x *.sh *.py
-    pip3.4 install --user requests tqdm
+    pip install -r requirements.txt
     ./install_bashrc_banner.sh YOUTUBE_API_KEY=... PLAYLIST_ID=...
 
 This last script will append some lines to your ~/.bashrc, that implement the logic detailed above.
@@ -64,7 +64,7 @@ Run the following in a console (just remember to substitute the `...` on the las
     wget https://rawgit.com/Lucas-C/youtube_playlist_watcher/master/youtube_playlist_watcher.py
     wget https://rawgit.com/Lucas-C/youtube_playlist_watcher/master/install_crontask.sh
     chmod u+x *.sh *.py
-    pip3.4 install --user requests tqdm
+    pip install -r requirements.txt
     ./install_crontask.sh YOUTUBE_API_KEY=... PLAYLIST_ID=... EMAIL_DEST=...
 
 This last script will generate a `youtube_playlist_watcher_crontask.sh` script that will be invoked by a cron job,
@@ -92,5 +92,5 @@ Bug reports or features suggestions are warmly welcome !
 
 For the devs:
 
-    pip3.4 install --user pre-commit
+    pip install -r dev-requirements.txt
     pre-commit install
