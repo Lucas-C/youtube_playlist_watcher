@@ -1,3 +1,5 @@
+[![Known Vulnerabilities](https://snyk.io/test/github/lucas-c/youtube_playlist_watcher/badge.svg)](https://snyk.io/test/github/lucas-c/youtube_playlist_watcher)
+
 Do you get frustrated by videos disappearing from your Youtube playlist,
 because of copyright infringement, new region restrictions or just because the guy who uploaded them removed it ?
 With no way for you to find out which where those clips:
