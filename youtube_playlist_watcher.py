@@ -11,6 +11,7 @@ ISO8601_TIMESTAMP_FORMAT = '%Y%m%d%H%M%S'
 PLAYLIST_ITEMS_REQUEST_BATCH_SIZE = 50
 VIDEOS_DETAILS_REQUEST_BATCH_SIZE = 50
 THIS_SCRIPT_PARENT_DIR = os.path.dirname(os.path.realpath(__file__))
+DMCA_EXPUNGED_DESC = 'DMCA-expunged'
 
 def main(argv):
     args = parse_args(argv[1:])
@@ -32,8 +33,8 @@ def parse_args(argv):
                                 help='can be just a prefix like 2015-01-01')
     compare_parser.add_argument('dump2_timestamp', nargs='?', metavar='DUMP2', default='LATEST', help='ditto')
     compare_parser.add_argument('--alert-on', type=lambda s: s.split(','),
-                                choices=SublistChoices(('ADDED', 'REMOVED', 'DELETED', 'IS_PRIVATE', 'IS_BLOCKED_IN_REGION')),
-                                default=('DELETED', 'IS_PRIVATE', 'IS_BLOCKED_IN_REGION'),
+                                choices=SublistChoices(('ADDED', 'REMOVED', 'DELETED', 'IS_PRIVATE', 'IS_BLOCKED_IN_REGION', 'DMCA_EXPUNGED')),
+                                default=('DELETED', 'IS_PRIVATE', 'IS_BLOCKED_IN_REGION', 'DMCA_EXPUNGED'),
                                 help='Comma-separated list of changes that trigger the "alert-cmd"')
     compare_parser.add_argument('--region-watched', default='FR', help='Region watched for restrictions changes')
     compare_parser.add_argument('--alert-cmd', help='Command to run when a change is detected')
@@ -118,9 +119,11 @@ def is_video_deleted(item):
 
 def is_video_private(item):
     # Alt: retrieve the 'status' part (quota cost 2) -> item['status']['privacyStatus'] == 'private'
-    if item['snippet']['description'] != 'This video is private.' and item['snippet']['title'] != 'Private video':
+    yt_private_video_title = 'Private video'
+    yt_private_video_desc = 'This video is private.'
+    if item['snippet']['description'] != yt_private_video_desc and item['snippet']['title'] != yt_private_video_title:
         return False
-    if item['snippet']['description'] != 'This video is private.' or item['snippet']['title'] != 'Private video':
+    if item['snippet']['description'] != yt_private_video_desc or item['snippet']['title'] != yt_private_video_title:
         raise EnvironmentError('Youtube Data API change detected')
     return True
 
@@ -134,6 +137,9 @@ def is_video_blocked_in_region(item, region):
     if 'allowed' in region_restriction:
         return region not in region_restriction['allowed']
     return False
+
+def is_video_expunged(item):
+    return item['snippet']['description'] == DMCA_EXPUNGED_DESC
 
 
 ################################################################################
@@ -177,6 +183,12 @@ class OutputLinesIterator:
             yield ('IS PRIVATE: ' + video_name + ' ' + get_video_url(new_item)
                  + ' ({}th video in the playlist)'.format(new_item['index'])
                  + '\n -> find another video named like that: ' + get_search_url(video_name))
+    @staticmethod
+    def dmca_expunged(changeset, *_):
+        for new_item in changeset:
+            video_name = get_video_name(new_item)
+            yield ('DMCA-EXPUNGED: ' + video_name + ' ' + get_video_url(new_item)
+                 + '\n -> find another video named like that: ' + get_search_url(video_name))
 
 def add_indices(dump):
     for i, item in enumerate(dump):
@@ -213,6 +225,7 @@ def get_changes(dump1, dump2, region_watched):
         ])
     changes['REMOVED'] = [dump1_by_vid[vid] for vid in removed_vids if not should_ignore_removed_video(dump1_by_vid[vid])]
     changes['DELETED'] = [dump1_by_vid[vid] for vid in dump2_by_vid.keys() if is_video_deleted(dump2_by_vid[vid])]
+    changes['DMCA_EXPUNGED'] = [dump2_by_vid[vid] for vid in dump2_by_vid.keys() if is_video_expunged(dump2_by_vid[vid])]
     if region_watched:
         changes['IS_BLOCKED_IN_REGION'] = [(item, region_watched) for item in dump2 if is_video_blocked_in_region(item, region_watched)]
     return changes
@@ -340,8 +353,7 @@ def add_videos_details_to_playlist(videos_details, playlist, deleted_videos_ids)
         if is_video_private(video_item) or is_video_deleted(video_item):
             skipped_videos_count += 1
         elif get_video_id(video_item) in deleted_videos_ids:
-            video_item['snippet']['title'] = 'Deleted video'
-            video_item['snippet']['description'] = 'This video is unavailable.'
+            video_item['snippet']['description'] = DMCA_EXPUNGED_DESC
             skipped_videos_count += 1
         else:
             video_item.update(videos_details[index - skipped_videos_count])
@@ -352,4 +364,3 @@ def system_command(command, stdin):
 
 if __name__ == '__main__':
     main(sys.argv)
-
