@@ -58,9 +58,8 @@ class ArgparseHelpFormatter(argparse.RawTextHelpFormatter, argparse.ArgumentDefa
 
 def dump_command(args):
     playlist = get_playlist_with_progressbar(args.youtube_api_key, args.playlist_id)
-    videos_details, removed_videos_ids = get_videos_details_with_progressbar(args.youtube_api_key, playlist)
-    remove_videos_ids(playlist, removed_videos_ids)
-    add_videos_details_to_playlist(videos_details, playlist)
+    videos_details, deleted_videos_ids = get_videos_details_with_progressbar(args.youtube_api_key, playlist)
+    add_videos_details_to_playlist(videos_details, playlist, deleted_videos_ids)
     dump_to_file(playlist, args.playlist_id, args.backup_dir)
 
 def purge_dumps_command(args):
@@ -78,7 +77,7 @@ def compare_command(args):
     except Exception:
         if args.alert_cmd:
             error_msg = ''.join(traceback.format_exception(*sys.exc_info()))
-            print(system_command(args.alert_cmd, error_msg))
+            print(system_command(args.alert_cmd, stdin=error_msg))
         raise
 
 def _compare_command(args):
@@ -92,7 +91,7 @@ def _compare_command(args):
     print(text_output)
     alerting_changes = {type: items for (type, items) in changes.items() if type in args.alert_on and items}
     if alerting_changes and args.alert_cmd:
-        print(system_command(args.alert_cmd, text_output))
+        print(system_command(args.alert_cmd, stdin=text_output))
 
 ################################################################################
 ### Video items utility functions
@@ -335,19 +334,17 @@ def list_videos_details_paginated(youtube_api_key, video_ids):
         yield response
         batch_start_index += VIDEOS_DETAILS_REQUEST_BATCH_SIZE
 
-def remove_videos_ids(playlist, videos_ids):
-    for video_id in videos_ids:
-        playlist_index = next(i for (i, item) in enumerate(playlist) if get_video_id(item) == video_id)
-        del playlist[playlist_index]
-
-def add_videos_details_to_playlist(videos_details, playlist):
+def add_videos_details_to_playlist(videos_details, playlist, deleted_videos_ids):
     skipped_videos_count = 0
     for index, video_item in enumerate(playlist):
-        video_details = videos_details[index - skipped_videos_count]
         if is_video_private(video_item) or is_video_deleted(video_item):
             skipped_videos_count += 1
+        elif get_video_id(video_item) in deleted_videos_ids:
+            video_item['snippet']['title'] = 'Deleted video'
+            video_item['snippet']['description'] = 'This video is unavailable.'
+            skipped_videos_count += 1
         else:
-            video_item.update(video_details)
+            video_item.update(videos_details[index - skipped_videos_count])
 
 def system_command(command, stdin):
     return subprocess.check_output(command, input=bytes(stdin, 'UTF-8'), shell=True, stderr=subprocess.STDOUT).decode("utf-8")
@@ -355,3 +352,4 @@ def system_command(command, stdin):
 
 if __name__ == '__main__':
     main(sys.argv)
+
