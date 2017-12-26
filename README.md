@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.org/Lucas-C/youtube_playlist_watcher.svg?branch=master)](https://travis-ci.org/Lucas-C/youtube_playlist_watcher)
 [![Known Vulnerabilities](https://snyk.io/test/github/lucas-c/youtube_playlist_watcher/badge.svg)](https://snyk.io/test/github/lucas-c/youtube_playlist_watcher)
 
 Do you get frustrated by videos disappearing from your Youtube playlist,
