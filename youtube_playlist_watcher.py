@@ -158,7 +158,7 @@ class OutputLinesIterator:
             yield ('REMOVED: ' + video_name + ' ' + get_video_url(old_item)
                  + '\n -> find another video named like that: ' + get_search_url(video_name))
     @staticmethod
-    def deleted(changeset, *_):
+    def deleted(changeset, args):
         for old_item in changeset:
             video_name = get_video_name(old_item) if not is_video_deleted(old_item) else retrieve_video_name_from_prev_dumps(get_video_id(old_item), args)
             yield ('DELETED: ' + get_video_name(old_item) + ' ' + get_video_url(old_item)

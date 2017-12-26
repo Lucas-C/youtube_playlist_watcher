@@ -3,7 +3,7 @@
 import requests, sys
 
 
-VIDEOS_DETAILS_REQUEST_BATCH_SIZE= 50
+VIDEOS_DETAILS_REQUEST_BATCH_SIZE = 50
 
 
 def get_videos_topics(youtube_api_key, video_ids):
@@ -24,6 +24,6 @@ def get_videos_topics(youtube_api_key, video_ids):
 
 
 if __name__ == '__main__':
-    youtube_api_key, video_id = sys.argv[1], sys.argv[2]
-    video_topics_per_id = get_videos_topics(youtube_api_key, [video_id])
-    print(video_topics_per_id[video_id])
+    api_key, vid = sys.argv[1], sys.argv[2]
+    video_topics = get_videos_topics(api_key, [vid])
+    print(video_topics[vid])
