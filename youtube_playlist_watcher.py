@@ -58,7 +58,8 @@ class ArgparseHelpFormatter(argparse.RawTextHelpFormatter, argparse.ArgumentDefa
 
 def dump_command(args):
     playlist = get_playlist_with_progressbar(args.youtube_api_key, args.playlist_id)
-    videos_details = get_videos_details_with_progressbar(args.youtube_api_key, playlist)
+    videos_details, removed_videos_ids = get_videos_details_with_progressbar(args.youtube_api_key, playlist)
+    remove_videos_ids(playlist, removed_videos_ids)
     add_videos_details_to_playlist(videos_details, playlist)
     dump_to_file(playlist, args.playlist_id, args.backup_dir)
 
@@ -306,15 +307,17 @@ def list_playlist_videos_paginated(youtube_api_key, playlist_id):
 
 def get_videos_details_with_progressbar(youtube_api_key, playlist):
     print('Getting region restrictions for each video')
-    video_ids = [item['snippet']['resourceId']['videoId'] for item in playlist]
+    video_ids = [get_video_id(item) for item in playlist]
     paginated_playlist_iterator = list_videos_details_paginated(youtube_api_key, video_ids)
-    videos_details = []
+    videos_details, removed_videos_ids = [], []
     pages_count = math.floor(float(len(video_ids)) / VIDEOS_DETAILS_REQUEST_BATCH_SIZE)
     for page in tqdm(paginated_playlist_iterator, total=pages_count):
         if 'error' in page:
             raise EnvironmentError(page)
+        if 'missing_ids' in page:
+            removed_videos_ids.extend(page['missing_ids'])
         videos_details.extend(page['items'])
-    return videos_details
+    return videos_details, removed_videos_ids
 
 def list_videos_details_paginated(youtube_api_key, video_ids):
     batch_start_index = 0
@@ -326,8 +329,16 @@ def list_videos_details_paginated(youtube_api_key, video_ids):
             'maxResults': VIDEOS_DETAILS_REQUEST_BATCH_SIZE,
             'part': 'contentDetails,status',  # total quota cost: 1 (base) + 2 + 2
         }).json()
+        missing_ids = set(videos_ids_batch) - set(item['id'] for item in response['items'])
+        if missing_ids:  # Can happen when a video is removed because of a DMCA complaint
+            response['missing_ids'] = missing_ids
         yield response
         batch_start_index += VIDEOS_DETAILS_REQUEST_BATCH_SIZE
+
+def remove_videos_ids(playlist, videos_ids):
+    for video_id in videos_ids:
+        playlist_index = next(i for (i, item) in enumerate(playlist) if get_video_id(item) == video_id)
+        del playlist[playlist_index]
 
 def add_videos_details_to_playlist(videos_details, playlist):
     skipped_videos_count = 0
