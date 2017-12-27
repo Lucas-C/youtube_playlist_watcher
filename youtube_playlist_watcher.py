@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.4
+#!/usr/bin/env python3
 
 import argparse, json, math, os, requests, string, subprocess, sys, time, traceback
 from os.path import basename
@@ -324,7 +324,7 @@ def get_videos_details_with_progressbar(youtube_api_key, playlist):
         videos_details.extend(page['items'])
     return videos_details, no_details_videos_ids
 
-def list_videos_details_paginated(youtube_api_key, video_ids):
+def list_videos_details_paginated(youtube_api_key, video_ids, part='contentDetails,status'):  # total quota cost: 1 (base) + 2 + 2
     batch_start_index = 0
     while batch_start_index < len(video_ids):
         videos_ids_batch = video_ids[batch_start_index:batch_start_index + VIDEOS_DETAILS_REQUEST_BATCH_SIZE]
@@ -332,7 +332,7 @@ def list_videos_details_paginated(youtube_api_key, video_ids):
             'key': youtube_api_key,
             'id': ','.join(videos_ids_batch),  # it is not clearly documented, but the API does not accept more than 50 ids here
             'maxResults': VIDEOS_DETAILS_REQUEST_BATCH_SIZE,
-            'part': 'contentDetails,status',  # total quota cost: 1 (base) + 2 + 2
+            'part': part
         }).json()
         missing_ids = set(videos_ids_batch) - set(item['id'] for item in response['items'])
         if missing_ids:  # Can happen when a video is removed because of a DMCA complaint

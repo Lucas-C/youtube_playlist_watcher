@@ -1,5 +1,5 @@
 [MESSAGES CONTROL]
-disable = bad-continuation, duplicate-code, import-error, invalid-name, missing-docstring, multiple-imports, too-few-public-methods, ungrouped-imports, wrong-import-order
+disable = bad-continuation, import-error, invalid-name, missing-docstring, multiple-imports, too-few-public-methods, ungrouped-imports, wrong-import-order
 
 [FORMAT]
 max-line-length = 155

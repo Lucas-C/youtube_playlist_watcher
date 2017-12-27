@@ -1,25 +1,14 @@
 #!/usr/bin/env python3
 
-import requests, sys
-
-
-VIDEOS_DETAILS_REQUEST_BATCH_SIZE = 50
+import sys
+from youtube_playlist_watcher import list_videos_details_paginated
 
 
 def get_videos_topics(youtube_api_key, video_ids):
     video_topics_per_id = {}
-    batch_start_index = 0
-    while batch_start_index < len(video_ids):
-        videos_ids_batch = video_ids[batch_start_index:batch_start_index + VIDEOS_DETAILS_REQUEST_BATCH_SIZE]
-        response = requests.get('https://www.googleapis.com/youtube/v3/videos', params={
-            'key': youtube_api_key,
-            'id': ','.join(videos_ids_batch),  # it is not clearly documented, but the API does not accept more than 50 ids here
-            'maxResults': VIDEOS_DETAILS_REQUEST_BATCH_SIZE,
-            'part': 'topicDetails', # cf. https://developers.google.com/youtube/v3/docs/videos/list#parameters
-        }).json()
+    for response in list_videos_details_paginated(youtube_api_key, video_ids, part='topicDetails'):
         for item in response['items']:
             video_topics_per_id[item['id']] = [cat.replace('https://en.wikipedia.org/wiki/', '') for cat in item['topicDetails']['topicCategories']]
-        batch_start_index += VIDEOS_DETAILS_REQUEST_BATCH_SIZE
     return video_topics_per_id
 
 
