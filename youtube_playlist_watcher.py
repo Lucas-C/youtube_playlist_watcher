@@ -33,8 +33,8 @@ def parse_args(argv):
                                 help='can be just a prefix like 2015-01-01')
     compare_parser.add_argument('dump2_timestamp', nargs='?', metavar='DUMP2', default='LATEST', help='ditto')
     compare_parser.add_argument('--alert-on', type=lambda s: s.split(','),
-                                choices=SublistChoices(('ADDED', 'REMOVED', 'IS_PRIVATE', 'IS_BLOCKED_IN_REGION')),
-                                default=('REMOVED', 'IS_PRIVATE', 'IS_BLOCKED_IN_REGION'),
+                                choices=SublistChoices(('ADDED', 'DELETED', 'REMOVED', 'IS_PRIVATE', 'IS_BLOCKED_IN_REGION')),
+                                default=('DELETED', 'REMOVED', 'IS_PRIVATE', 'IS_BLOCKED_IN_REGION'),
                                 help='Comma-separated list of changes that trigger the "alert-cmd"')
     compare_parser.add_argument('--region-watched', default='FR', help='Region watched for restrictions changes')
     compare_parser.add_argument('--alert-cmd', help='Command to run when a change is detected')
@@ -109,6 +109,16 @@ def get_video_name(item):
 def get_search_url(video_name):
     return 'https://www.youtube.com/results?' + urlencode({'search_query': video_name})
 
+def is_video_deleted(item):
+    if item.get(NO_DETAILS_AVAILABLE_KEY, False):
+        return True
+    snippet = item.get('snippet', None)
+    if snippet and snippet['title'] == 'Deleted video' and snippet['description'] == 'This video is unavailable.':
+        return True
+    if 'status' in item:
+        return item['status']['uploadStatus'] != 'processed'
+    return False
+
 def is_video_private(item):
     # Alt: retrieve the 'status' part (quota cost 2) -> item['status']['privacyStatus'] == 'private'
     yt_private_video_title = 'Private video'
@@ -147,11 +157,18 @@ class OutputLinesIterator:
         for new_item in changeset:
             yield 'ADDED: ' + get_video_name(new_item) + ' ' + get_video_url(new_item)
     @staticmethod
+    def deleted(changeset, args):
+        for old_item in changeset:
+            video_name = get_video_name(old_item) if not is_video_deleted(old_item) else retrieve_video_name_from_prev_dumps(get_video_id(old_item), args)
+            yield ('DELETED: ' + get_video_name(old_item) + ' ' + get_video_url(old_item)
+                 + ' ({}th video in the playlist)'.format(old_item['current_index'])
+                 + '\n -> find another video named like that: ' + get_search_url(video_name))
+    @staticmethod
     def removed(changeset, *_):
         for old_item in changeset:
             video_name = get_video_name(old_item)
             yield ('REMOVED: ' + video_name + ' ' + get_video_url(old_item)
-                 + ' ({}th video in the playlist)'.format(old_item['index'])
+                 + ' (was {}th video in the playlist)'.format(old_item['index'])
                  + '\n -> find another video named like that: ' + get_search_url(video_name))
     @staticmethod
     def is_blocked_in_region(changeset, *_):
@@ -178,7 +195,7 @@ def retrieve_video_name_from_prev_dumps(video_id, args):
             prev_same_video = next(item for item in dump if get_video_id(item) == video_id)
         except StopIteration:
             return ''
-        if not is_video_private(prev_same_video):
+        if not is_video_deleted(prev_same_video) and not is_video_private(prev_same_video):
             return get_video_name(prev_same_video)
     return ''
 
@@ -194,16 +211,22 @@ def get_changes(dump1, dump2, region_watched):
     changes['IS_PRIVATE'] = [(new_item, old_item) for (old_item, new_item) in common_vids if is_video_private(new_item)]
     added_vids = dump2_by_vid.keys() - dump1_by_vid.keys()
     changes['ADDED'] = [dump2_by_vid[vid] for vid in added_vids]
+    changes['DELETED'] = [_add_current_index(dump1_by_vid[vid], dump2_by_vid[vid]) for vid in dump2_by_vid.keys() if is_video_deleted(dump2_by_vid[vid])]
     removed_vids = dump1_by_vid.keys() - dump2_by_vid.keys()
     def should_ignore_removed_video(item):
         return any([
             region_watched and is_video_blocked_in_region(item, region_watched),
+            is_video_deleted(item),
             is_video_private(item),
         ])
     changes['REMOVED'] = [dump1_by_vid[vid] for vid in removed_vids if not should_ignore_removed_video(dump1_by_vid[vid])]
     if region_watched:
         changes['IS_BLOCKED_IN_REGION'] = [(item, region_watched) for item in dump2 if is_video_blocked_in_region(item, region_watched)]
     return changes
+
+def _add_current_index(old_vid, new_vid):
+    old_vid['current_index'] = new_vid['index']
+    return old_vid
 
 
 ################################################################################
@@ -316,6 +339,9 @@ def list_videos_details_paginated(youtube_api_key, video_ids, part='contentDetai
             'maxResults': VIDEOS_DETAILS_REQUEST_BATCH_SIZE,
             'part': part
         }).json()
+        if 'items' not in response:
+            print(response)
+            raise EnvironmentError('Youtube API response does not contain "items" field')
         missing_ids = set(videos_ids_batch) - set(item['id'] for item in response['items'])
         if missing_ids:  # Can happen when a video is removed because of a DMCA complaint
             response['missing_ids'] = missing_ids
@@ -325,7 +351,7 @@ def list_videos_details_paginated(youtube_api_key, video_ids, part='contentDetai
 def add_videos_details_to_playlist(videos_details, playlist, no_details_videos_ids):
     skipped_videos_count = 0
     for index, video_item in enumerate(playlist):
-        if is_video_private(video_item):
+        if is_video_deleted(video_item) or is_video_private(video_item):
             skipped_videos_count += 1
         elif get_video_id(video_item) in no_details_videos_ids:
             video_item[NO_DETAILS_AVAILABLE_KEY] = True
