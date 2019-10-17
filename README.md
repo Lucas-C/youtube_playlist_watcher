@@ -48,6 +48,7 @@ To install it, run the following in a console (just remember to substitute the `
     cd /path/to/your/installation/directory # the JSON dumps will be stored there by default
     wget https://rawgit.com/Lucas-C/youtube_playlist_watcher/master/youtube_playlist_watcher.py
     wget https://rawgit.com/Lucas-C/youtube_playlist_watcher/master/install_bashrc_banner.sh
+    wget https://rawgit.com/Lucas-C/youtube_playlist_watcher/master/requirements.txt
     chmod u+x *.sh *.py
     pip install -r requirements.txt
     ./install_bashrc_banner.sh YOUTUBE_API_KEY=... PLAYLIST_ID=...
@@ -66,6 +67,7 @@ Run the following in a console (just remember to substitute the `...` on the las
     cd /path/to/your/installation/directory # the JSON dumps will be stored there by default
     wget https://rawgit.com/Lucas-C/youtube_playlist_watcher/master/youtube_playlist_watcher.py
     wget https://rawgit.com/Lucas-C/youtube_playlist_watcher/master/install_crontask.sh
+    wget https://rawgit.com/Lucas-C/youtube_playlist_watcher/master/requirements.txt
     chmod u+x *.sh *.py
     pip install -r requirements.txt
     ./install_crontask.sh YOUTUBE_API_KEY=... PLAYLIST_ID=... EMAIL_DEST=...
