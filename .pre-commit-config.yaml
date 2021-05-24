@@ -1,11 +1,11 @@
 repos:
 -   repo: git://github.com/Lucas-C/pre-commit-hooks
-    sha: v1.1.4
+    rev: v1.1.10
     hooks:
     -   id: remove-crlf
     -   id: forbid-tabs
 -   repo: git://github.com/pre-commit/pre-commit-hooks
-    sha: v1.1.1
+    rev: v4.0.1
     hooks:
     -   id: check-merge-conflict
     -   id: check-yaml
@@ -14,7 +14,7 @@ repos:
         args:
         - --no-markdown-linebreak-ext
 -   repo: git://github.com/pre-commit/mirrors-pylint
-    sha: v1.8.1
+    rev: v3.0.0a3
     hooks:
     -   id: pylint
         args:
