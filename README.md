@@ -91,6 +91,19 @@ Want to find more secret features ? The `--help` flag is your friend.
 Or use the power Luke: READ THE SOURCE !
 
 
+## Removing "ghost" playlist items
+
+If you repeatedly get reports like this:
+
+    IS PRIVATE: AURORA - All Is Soft Inside - LYRICS https://www.youtube.com/watch?v=tUiWQiUvWas (217th video in the playlist)
+     -> find another video named like that: https://www.youtube.com/results?search_query=AURORA+-+All+Is+Soft+Inside+-+LYRICS
+    DELETED: Deleted video https://www.youtube.com/watch?v=Y9QHak8h1AQ (437th video in the playlist)
+     -> find another video named like that: https://www.youtube.com/results?search_query=Nujabes+-+Lady+Brown
+
+Use Youtube Data API web "shooter" to remove the corresponding playlist items:
+https://developers.google.com/youtube/v3/docs/playlistItems/delete
+
+
 ## Contributing
 
 Bug reports or features suggestions are warmly welcome !
