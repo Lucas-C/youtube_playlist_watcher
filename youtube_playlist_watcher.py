@@ -318,6 +318,7 @@ def list_playlist_videos_paginated(youtube_api_key, playlist_id):
 def get_videos_details_with_progressbar(youtube_api_key, playlist):
     print('Getting region restrictions for each video')
     video_ids = [get_video_id(item) for item in playlist]
+    playlist_item_ids_per_video_id = {get_video_id(item): item['id'] for item in playlist}
     paginated_playlist_iterator = list_videos_details_paginated(youtube_api_key, video_ids)
     videos_details, no_details_videos_ids = [], []
     pages_count = math.floor(float(len(video_ids)) / VIDEOS_DETAILS_REQUEST_BATCH_SIZE)
@@ -326,6 +327,8 @@ def get_videos_details_with_progressbar(youtube_api_key, playlist):
             raise EnvironmentError(page)
         if 'missing_ids' in page:
             no_details_videos_ids.extend(page['missing_ids'])
+        for item in page['items']:
+            item['playlistItemId'] = playlist_item_ids_per_video_id[item['id']]
         videos_details.extend(page['items'])
     return videos_details, no_details_videos_ids
 
