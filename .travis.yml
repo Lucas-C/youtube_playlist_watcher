@@ -1,9 +1,0 @@
-language: python
-python:
-  - "3.4"
-  - "3.5"
-install: pip install -r dev-requirements.txt
-script: pre-commit run --all-files
-notifications:
-  email:
-    on_success: never
