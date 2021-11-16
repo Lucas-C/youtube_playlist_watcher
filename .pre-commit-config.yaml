@@ -14,7 +14,7 @@ repos:
         args:
         - --no-markdown-linebreak-ext
 -   repo: git://github.com/pre-commit/mirrors-pylint
-    rev: v3.0.0a3
+    rev: v3.0.0a4
     hooks:
     -   id: pylint
         args:

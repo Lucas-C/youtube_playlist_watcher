@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# USAGE: ./get_youtube_video_topics.py $API_KEY $VIDEO_ID
+
 import sys
 from youtube_playlist_watcher import list_videos_details_paginated
 

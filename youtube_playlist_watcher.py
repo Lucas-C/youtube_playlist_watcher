@@ -5,6 +5,7 @@ from os.path import basename
 from glob import glob
 from tqdm import tqdm
 from urllib.parse import urlencode
+from typing import NamedTuple
 
 DUMP_FILENAME_TEMPLATE = 'youtube-playlist-{playlist_id}-{timestamp}.json'
 ISO8601_TIMESTAMP_FORMAT = '%Y%m%d%H%M%S'
@@ -159,10 +160,10 @@ class OutputLinesIterator:
     @staticmethod
     def deleted(changeset, args):
         for old_item in changeset:
-            video_name = get_video_name(old_item) if not is_video_deleted(old_item) else retrieve_video_name_from_prev_dumps(get_video_id(old_item), args)
+            video_info = retrieve_old_video_info_from_prev_dumps(get_video_id(old_item), args) if is_video_deleted(old_item) else get_video_name(old_item)
             yield ('DELETED: ' + get_video_name(old_item) + ' ' + get_video_url(old_item)
                  + ' ({}th video in the playlist)'.format(old_item['current_index'])
-                 + '\n -> find another video named like that: ' + get_search_url(video_name))
+                 + '\n -> find another video named like that: ' + get_search_url(video_info.video_name))
     @staticmethod
     def removed(changeset, *_):
         for old_item in changeset:
@@ -180,24 +181,32 @@ class OutputLinesIterator:
     @staticmethod
     def is_private(changeset, args):
         for new_item, old_item in changeset:
-            video_name = get_video_name(old_item) if not is_video_private(old_item) else retrieve_video_name_from_prev_dumps(get_video_id(old_item), args)
-            yield ('IS PRIVATE: ' + video_name + ' ' + get_video_url(new_item)
-                 + ' ({}th video in the playlist)'.format(new_item['index'])
-                 + '\n -> find another video named like that: ' + get_search_url(video_name))
+            video_info = retrieve_old_video_info_from_prev_dumps(get_video_id(old_item), args) if is_video_private(old_item) else OldVideoInfo(get_video_name(old_item), old_item['playlistItemId'])
+            yield ('IS PRIVATE: ' + video_info.video_name + ' ' + get_video_url(new_item)
+                 + ' ({}th video in the playlist, with playlistItemId={})'.format(new_item['index'], video_info.playlist_item_id)
+                 + '\n -> find another video named like that: ' + get_search_url(video_info.video_name))
 
 def add_indices(dump):
     for i, item in enumerate(dump):
         item['index'] = i + 1
 
-def retrieve_video_name_from_prev_dumps(video_id, args):
+
+class OldVideoInfo(NamedTuple):
+    video_name : str
+    playlist_item_id : str
+
+OLD_VID_INFO_NOT_FOUND = OldVideoInfo('NOT_FOUND', 'NOT_FOUND')
+
+
+def retrieve_old_video_info_from_prev_dumps(video_id, args):
     for dump in get_all_dumps_contents_sorted_by_date(args.backup_dir, args.playlist_id):
         try:
             prev_same_video = next(item for item in dump if get_video_id(item) == video_id)
         except StopIteration:
-            return ''
+            return OLD_VID_INFO_NOT_FOUND
         if not is_video_deleted(prev_same_video) and not is_video_private(prev_same_video):
-            return get_video_name(prev_same_video)
-    return ''
+            return OldVideoInfo(get_video_name(prev_same_video), prev_same_video['playlistItemId'])
+    return OLD_VID_INFO_NOT_FOUND
 
 
 ################################################################################
