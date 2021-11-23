@@ -160,10 +160,10 @@ class OutputLinesIterator:
     @staticmethod
     def deleted(changeset, args):
         for old_item in changeset:
-            video_info = retrieve_old_video_info_from_prev_dumps(get_video_id(old_item), args) if is_video_deleted(old_item) else get_video_name(old_item)
-            yield ('DELETED: ' + get_video_name(old_item) + ' ' + get_video_url(old_item)
+            video_name = retrieve_old_video_info_from_prev_dumps(get_video_id(old_item), args).video_name if is_video_deleted(old_item) else get_video_name(old_item)
+            yield ('DELETED: ' + video_name + ' ' + get_video_url(old_item)
                  + ' ({}th video in the playlist)'.format(old_item['current_index'])
-                 + '\n -> find another video named like that: ' + get_search_url(video_info.video_name))
+                 + '\n -> find another video named like that: ' + get_search_url(video_name))
     @staticmethod
     def removed(changeset, *_):
         for old_item in changeset:
