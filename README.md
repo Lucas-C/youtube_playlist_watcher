@@ -103,6 +103,11 @@ If you repeatedly get reports like this:
 Use Youtube Data API web "shooter" to remove the corresponding playlist items:
 https://developers.google.com/youtube/v3/docs/playlistItems/delete
 
+You can extract all `playlistItemId` of deleted videos from a `youtube-playlist-$playlist_id-$timestamp.json` file
+using the following [jq](https://stedolan.github.io/jq/) command:
+
+    jq '.[] | select(.snippet.title=="Deleted video") | .id' $json_file
+
 
 ## Contributing
 
