@@ -28,7 +28,7 @@ and alert you with console messages or emails like this:
 ## Requirements
 A computer with:
 
-- Python 3.4 at least
+- Python 3.7 at least
 - a [Youtube Data API key](https://developers.google.com/youtube/v3/getting-started) (it's free)
 - and either:
     * the ability to run daily jobs (e.g. standard Linux cron jobs) + `mail`, `mutt` or any other command-line email client
