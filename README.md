@@ -108,6 +108,8 @@ using the following [jq](https://stedolan.github.io/jq/) command:
 
     jq '.[] | select(.snippet.title=="Deleted video") | .id' $json_file
 
+It cannot easily be done with a script, as this API endpoint also requires an OAuth2 access token.
+
 
 ## Contributing
 

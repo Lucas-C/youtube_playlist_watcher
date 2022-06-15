@@ -314,15 +314,17 @@ def get_playlist_with_progressbar(youtube_api_key, playlist_id):
 def list_playlist_videos_paginated(youtube_api_key, playlist_id):
     page_token = None
     while page_token is not False:
-        response = requests.get('https://www.googleapis.com/youtube/v3/playlistItems', params={
+        resp = requests.get('https://www.googleapis.com/youtube/v3/playlistItems', params={
             'key': youtube_api_key,
             'playlistId': playlist_id,
             'pageToken': page_token,
             'maxResults': PLAYLIST_ITEMS_REQUEST_BATCH_SIZE,
             'part': 'snippet',  # total quota cost: 1 (base) + 2
-        }).json()
-        yield response
-        page_token = response.get('nextPageToken', False)
+        })
+        resp.raise_for_status()
+        data = resp.json()
+        yield data
+        page_token = data.get('nextPageToken', False)
 
 def get_videos_details_with_progressbar(youtube_api_key, playlist):
     print('Getting region restrictions for each video')
@@ -345,19 +347,21 @@ def list_videos_details_paginated(youtube_api_key, video_ids, part='contentDetai
     batch_start_index = 0
     while batch_start_index < len(video_ids):
         videos_ids_batch = video_ids[batch_start_index:batch_start_index + VIDEOS_DETAILS_REQUEST_BATCH_SIZE]
-        response = requests.get('https://www.googleapis.com/youtube/v3/videos', params={
+        resp = requests.get('https://www.googleapis.com/youtube/v3/videos', params={
             'key': youtube_api_key,
             'id': ','.join(videos_ids_batch),  # it is not clearly documented, but the API does not accept more than 50 ids here
             'maxResults': VIDEOS_DETAILS_REQUEST_BATCH_SIZE,
             'part': part
-        }).json()
-        if 'items' not in response:
-            print(response)
+        })
+        resp.raise_for_status()
+        data = resp.json()
+        if 'items' not in data:
+            print(data)
             raise EnvironmentError('Youtube API response does not contain "items" field')
-        missing_ids = set(videos_ids_batch) - set(item['id'] for item in response['items'])
+        missing_ids = set(videos_ids_batch) - set(item['id'] for item in data['items'])
         if missing_ids:  # Can happen when a video is removed because of a DMCA complaint
-            response['missing_ids'] = missing_ids
-        yield response
+            data['missing_ids'] = missing_ids
+        yield data
         batch_start_index += VIDEOS_DETAILS_REQUEST_BATCH_SIZE
 
 def add_videos_details_to_playlist(videos_details, playlist, no_details_videos_ids):
