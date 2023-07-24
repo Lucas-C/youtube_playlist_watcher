@@ -162,6 +162,7 @@ class OutputLinesIterator:
         for old_item in changeset:
             video_name = retrieve_old_video_info_from_prev_dumps(get_video_id(old_item), args).video_name if is_video_deleted(old_item) else get_video_name(old_item)
             yield ('DELETED: ' + video_name + ' ' + get_video_url(old_item)
+                # TODO: insert .playlistItemId (that IS accessible), like for private videos
                  + ' ({}th video in the playlist)'.format(old_item['current_index'])
                  + '\n -> find another video named like that: ' + get_search_url(video_name))
     @staticmethod
