@@ -69,7 +69,7 @@ def purge_dumps_command(args):
     dumps_to_remove = all_dumps[:-args.keep_count]
     if not dumps_to_remove:
         return
-    print('Now removing the following dumps: {}'.format(' '.join([basename(f) for f in dumps_to_remove])))
+    print(f"Now removing the following dumps: {' '.join([basename(f) for f in dumps_to_remove])}")
     for dump in dumps_to_remove:
         os.unlink(dump)
 
@@ -147,8 +147,7 @@ def is_video_blocked_in_region(item, region):
 ### Textual output generation
 
 def make_text_output(args, changes):
-    header = '[YPW] Changes detected in playlist https://www.youtube.com/playlist?list={} (region watched: {})'.format(
-            args.playlist_id, args.region_watched)
+    header = f'[YPW] Changes detected in playlist https://www.youtube.com/playlist?list={args.playlist_id} (region watched: {args.region_watched})'
     output_lines_iterator = (list(getattr(OutputLinesIterator, changetype.lower())(changeset, args)) for (changetype, changeset) in changes.items())
     return '\n'.join(sum(output_lines_iterator, [header]))
 
@@ -162,14 +161,14 @@ class OutputLinesIterator:
         for old_item in changeset:
             video_info = retrieve_old_video_info_from_prev_dumps(get_video_id(old_item), args) if is_video_deleted(old_item) else OldVideoInfo(get_video_name(old_item), old_item['playlistItemId'])
             yield ('DELETED: ' + video_info.video_name + ' ' + get_video_url(old_item)
-                 + ' ({}th video in the playlist, with playlistItemId={})'.format(old_item['current_index'], video_info.playlist_item_id)
+                 + f' ({old_item["current_index"]}th video in the playlist, with playlistItemId={video_info.playlist_item_id})'
                  + '\n -> find another video named like that: ' + get_search_url(video_info.video_name))
     @staticmethod
     def removed(changeset, *_):
         for old_item in changeset:
             video_name = get_video_name(old_item)
             yield ('REMOVED: ' + video_name + ' ' + get_video_url(old_item)
-                 + ' (was {}th video in the playlist)'.format(old_item['index'])
+                 + f' (was {old_item["index"]}th video in the playlist)'
                  + '\n -> find another video named like that: ' + get_search_url(video_name))
     @staticmethod
     def is_blocked_in_region(changeset, *_):
@@ -183,7 +182,7 @@ class OutputLinesIterator:
         for new_item, old_item in changeset:
             video_info = retrieve_old_video_info_from_prev_dumps(get_video_id(old_item), args) if is_video_private(old_item) else OldVideoInfo(get_video_name(old_item), old_item['playlistItemId'])
             yield ('IS PRIVATE: ' + video_info.video_name + ' ' + get_video_url(new_item)
-                 + ' ({}th video in the playlist, with playlistItemId={})'.format(new_item['index'], video_info.playlist_item_id)
+                 + f' ({new_item["index"]}th video in the playlist, with playlistItemId={video_info.playlist_item_id})'
                  + '\n -> find another video named like that: ' + get_search_url(video_info.video_name))
 
 def add_indices(dump):
@@ -246,9 +245,9 @@ def dump_to_file(playlist, playlist_id, backup_dir):
     filename = DUMP_FILENAME_TEMPLATE.format(playlist_id=playlist_id, timestamp=timestamp)
     filepath = os.path.join(backup_dir, filename)
     if os.path.exists(filepath):
-        raise OSError('Dump file already exists: {}'.format(filepath))
-    print('Dumping playlist to file: {}'.format(filename))
-    with open(filepath, 'w+') as dump_file:
+        raise OSError(f'Dump file already exists: {filepath}')
+    print(f'Dumping playlist to file: {filename}')
+    with open(filepath, 'w+', encoding='utf-8') as dump_file:
         json.dump(playlist, dump_file, sort_keys=True, indent=4)
 
 def get_dumps(args):
@@ -261,10 +260,10 @@ def get_dump_from_tag_or_timestamp(dump_timestamp, tagged_dump_filenames, args):
     dump_filename = tagged_dump_filenames.get(dump_timestamp, None)
     if not dump_filename:
         if dump_timestamp in tagged_dump_filenames.keys():
-            raise EnvironmentError("There isn't enough dump files in directory '{}'"
-                                   " for playlist '{}' to use tag {}".format(args.backup_dir, args.playlist_id, dump_timestamp))
+            raise EnvironmentError(f"There isn't enough dump files in directory '{args.backup_dir}'"
+                                   f" for playlist '{args.playlist_id}' to use tag {dump_timestamp}")
         dump_filename = find_dump_filename_for_timestamp(args.backup_dir, args.playlist_id, dump_timestamp)
-    with open(dump_filename, 'r') as dump_file:
+    with open(dump_filename, 'r', encoding='utf-8') as dump_file:
         return json.load(dump_file)
 
 def get_tagged_dump_filenames(backup_dir, playlist_id):
@@ -280,7 +279,7 @@ def get_all_dumps_sorted_by_date(backup_dir, playlist_id):
 
 def get_all_dumps_contents_sorted_by_date(backup_dir, playlist_id):
     for dump_path in get_all_dumps_sorted_by_date(backup_dir, playlist_id):
-        with open(dump_path, 'r') as dump_file:
+        with open(dump_path, 'r', encoding='utf-8') as dump_file:
             yield json.load(dump_file)
 
 def find_dump_filename_for_timestamp(backup_dir, playlist_id, timestamp_prefix):
@@ -288,11 +287,11 @@ def find_dump_filename_for_timestamp(backup_dir, playlist_id, timestamp_prefix):
     file_pattern = DUMP_FILENAME_TEMPLATE.format(playlist_id=playlist_id, timestamp=timestamp_prefix + '*')
     file_matches = glob(os.path.join(backup_dir, file_pattern))
     if not file_matches:
-        raise OSError('No dump file found for playlist "{}" in directory "{}"'
-                      ' with a timestamp starting with {}'.format(playlist_id, backup_dir, timestamp_prefix))
+        raise OSError(f'No dump file found for playlist "{playlist_id}" in directory "{backup_dir}"'
+                      f' with a timestamp starting with {timestamp_prefix}')
     if len(file_matches) > 1:
-        raise OSError(('Multiple files found for playlist "{}" in directory "{}" with a timestamp starting with {}\n'
-                       'You may want to specify a timestamp more precisely').format(playlist_id, backup_dir, timestamp_prefix))
+        raise OSError(f'Multiple files found for playlist "{playlist_id}" in directory "{backup_dir}" with a timestamp starting with {timestamp_prefix}\n'
+                       'You may want to specify a timestamp more precisely')
     return file_matches[0]
 
 

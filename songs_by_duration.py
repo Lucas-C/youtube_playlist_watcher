@@ -7,7 +7,7 @@
 
 import json, sys
 
-with open(sys.argv[1]) as json_file:
+with open(sys.argv[1], encoding='utf-8') as json_file:
     playlist = json.load(json_file)
 
 def parse_ptime(duration):  # e.g. PT1H32H15
