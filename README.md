@@ -100,15 +100,9 @@ If you repeatedly get reports like this:
     DELETED: Deleted video https://www.youtube.com/watch?v=Y9QHak8h1AQ (437th video in the playlist)
      -> find another video named like that: https://www.youtube.com/results?search_query=Nujabes+-+Lady+Brown
 
-Use Youtube Data API web "shooter" to remove the corresponding playlist items:
-https://developers.google.com/youtube/v3/docs/playlistItems/delete
+Use Youtube Data API web "shooter" (the right _APIs Explorer_ side-pannel) to remove the corresponding playlist items: https://developers.google.com/youtube/v3/docs/playlistItems/delete
 
-You can extract all `playlistItemId` of deleted videos from a `youtube-playlist-$playlist_id-$timestamp.json` file
-using the following [jq](https://stedolan.github.io/jq/) command:
-
-    jq '.[] | select(.snippet.title=="Deleted video") | .id' $json_file
-
-It cannot easily be done with a script, as this API endpoint also requires an OAuth2 access token.
+Or generate a OAuth client with scope `https://www.googleapis.com/auth/youtube.force-ssl`, download the corresponding `client_secret_CLIENTID.json` file, and then call `playlistItems_delete.py`.
 
 
 ## Contributing

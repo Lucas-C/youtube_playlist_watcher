@@ -1,1 +1,4 @@
 __pycache__/
+client_secret_CLIENTID.json
+token.json
+youtube-playlist-*.json

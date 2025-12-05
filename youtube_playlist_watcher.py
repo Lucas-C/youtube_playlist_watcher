@@ -96,8 +96,9 @@ def _compare_command(args):
     text_output = make_text_output(args, changes)
     print(text_output)
     alerting_changes = {type: items for (type, items) in changes.items() if type in args.alert_on and items}
-    if alerting_changes and args.alert_cmd:
-        print(system_command(args.alert_cmd, stdin=text_output))
+    if alerting_changes:
+        if args.alert_cmd:
+            print(system_command(args.alert_cmd, stdin=text_output))
         sys.exit(1)
 
 ################################################################################
