@@ -98,6 +98,7 @@ def _compare_command(args):
     alerting_changes = {type: items for (type, items) in changes.items() if type in args.alert_on and items}
     if alerting_changes and args.alert_cmd:
         print(system_command(args.alert_cmd, stdin=text_output))
+        sys.exit(1)
 
 ################################################################################
 ### Video items utility functions
@@ -163,10 +164,16 @@ class OutputLinesIterator:
     @staticmethod
     def deleted(changeset, args):
         for old_item in changeset:
-            video_info = retrieve_old_video_info_from_prev_dumps(get_video_id(old_item), args) if is_video_deleted(old_item) else OldVideoInfo(get_video_name(old_item), old_item['playlistItemId'])
-            yield ('DELETED: ' + video_info.video_name + ' ' + get_video_url(old_item)
-                 + f' ({old_item["current_index"]}th video in the playlist, with playlistItemId={video_info.playlist_item_id})'
-                 + '\n -> find another video named like that: ' + get_search_url(video_info.video_name))
+            if is_video_deleted(old_item):
+                video_info = retrieve_old_video_info_from_prev_dumps(get_video_id(old_item), args)
+            else:
+                video_info = OldVideoInfo(get_video_name(old_item), old_item['playlistItemId'])
+            output = f'DELETED: {video_info.video_name} {get_video_url(old_item)} ({old_item["current_index"]}th video in the playlist, with playlistItemId={video_info.playlist_item_id})'
+            if video_info.video_name == 'NOT_FOUND':
+                output += '\n -> this "ghost" song can be deleted using id=' + old_item['id']
+            else:
+                output += '\n -> find another video named like that: ' + get_search_url(video_info.video_name)
+            yield output
     @staticmethod
     def removed(changeset, *_):
         for old_item in changeset:
@@ -184,10 +191,16 @@ class OutputLinesIterator:
     @staticmethod
     def is_private(changeset, args):
         for new_item, old_item in changeset:
-            video_info = retrieve_old_video_info_from_prev_dumps(get_video_id(old_item), args) if is_video_private(old_item) else OldVideoInfo(get_video_name(old_item), old_item['playlistItemId'])
-            yield ('IS PRIVATE: ' + video_info.video_name + ' ' + get_video_url(new_item)
-                 + f' ({new_item["index"]}th video in the playlist, with playlistItemId={video_info.playlist_item_id})'
-                 + '\n -> find another video named like that: ' + get_search_url(video_info.video_name))
+            if is_video_private(old_item):
+                video_info = retrieve_old_video_info_from_prev_dumps(get_video_id(old_item), args)
+            else:
+                video_info = OldVideoInfo(get_video_name(old_item), old_item['playlistItemId'])
+            output = f'IS PRIVATE: {video_info.video_name} {get_video_url(new_item)} ({new_item["index"]}th video in the playlist, with playlistItemId={video_info.playlist_item_id})'
+            if video_info.video_name == 'NOT_FOUND':
+                output += '\n -> this "ghost" song can be deleted using id=' + old_item['id']
+            else:
+                output += '\n -> find another video named like that: ' + get_search_url(video_info.video_name)
+            yield output
 
 def add_indices(dump):
     for i, item in enumerate(dump):
