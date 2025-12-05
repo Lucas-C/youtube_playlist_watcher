@@ -3,9 +3,13 @@
 import argparse, json, math, os, requests, string, subprocess, sys, time, traceback
 from os.path import basename
 from glob import glob
-from tqdm import tqdm
 from urllib.parse import urlencode
 from typing import NamedTuple
+
+try:  # optional dependency
+    from tqdm import tqdm
+except ImportError:
+    tqdm = lambda _, **__: _
 
 DUMP_FILENAME_TEMPLATE = 'youtube-playlist-{playlist_id}-{timestamp}.json'
 ISO8601_TIMESTAMP_FORMAT = '%Y%m%d%H%M%S'
